@@ -5,3 +5,6 @@
 *.pdf
 *.gz
 *.jpeg
+__pycache__/
+*.ipynb
+*.png
