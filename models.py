@@ -16,16 +16,16 @@ from ops import init_embedding, embedding_lookup, conditional_instance_norm
 
 
 def Generator(images, En, De, embeddings, embedding_ids):
-    encoded_images, encode_layers = En(images)
+    encoded_source, encode_layers = En(images)
     local_embeddings = embedding_lookup(embeddings, embedding_ids)
-    embedded = torch.cat((encoded_images, local_embeddings), 1)
-    fake_images, decode_layers = De(embedded, encode_layers)
-    return fake_images, encoded_images
+    embedded = torch.cat((encoded_source, local_embeddings), 1)
+    fake_target = De(embedded, encode_layers)
+    return fake_target, encoded_source
 
 
 class Encoder(nn.Module):
     
-    def __init__(self, img_dim=2, conv_dim=64):
+    def __init__(self, img_dim=1, conv_dim=64):
         super(Encoder, self).__init__()
         self.conv1 = conv2d(img_dim, conv_dim)
         self.conv2 = conv2d(conv_dim, conv_dim*2)
@@ -53,15 +53,15 @@ class Encoder(nn.Module):
         encode_layers['e6'] = e6
         e7 = self.conv7(e6)
         encode_layers['e7'] = e7
-        encoded_images = self.conv8(e7)
-        encode_layers['e8'] = encoded_images
+        encoded_source = self.conv8(e7)
+        encode_layers['e8'] = encoded_source
         
-        return encoded_images, encode_layers
+        return encoded_source, encode_layers
     
     
 class Decoder(nn.Module):
     
-    def __init__(self, img_dim=2, embedded_dim=640, conv_dim=64):
+    def __init__(self, img_dim=1, embedded_dim=640, conv_dim=64):
         super(Decoder, self).__init__()
         self.deconv1 = deconv2d(embedded_dim, conv_dim*8)
         self.deconv2 = deconv2d(conv_dim*16, conv_dim*8)
@@ -74,7 +74,6 @@ class Decoder(nn.Module):
     
     
     def forward(self, embedded, encode_layers):
-        decode_layers = dict()
         
         d1 = self.deconv1(embedded)
         d1 = torch.cat((d1, encode_layers['e7']), dim=1)
@@ -91,31 +90,23 @@ class Decoder(nn.Module):
         d7 = self.deconv7(d6)
         d7 = torch.cat((d7, encode_layers['e1']), dim=1)
         d8 = self.deconv8(d7)        
-        fake_images = torch.tanh(d8)
+        fake_target = torch.tanh(d8)
         
-        decode_layers['d1'] = d1
-        decode_layers['d2'] = d2
-        decode_layers['d3'] = d3
-        decode_layers['d4'] = d4
-        decode_layers['d5'] = d5
-        decode_layers['d6'] = d6
-        decode_layers['d7'] = d7
-        decode_layers['d8'] = d8
-        
-        return fake_images, decode_layers
+        return fake_target
     
     
 class Discriminator(nn.Module):
-    def __init__(self, embedding_num, img_dim=2, disc_dim=64):
+    def __init__(self, category_num, img_dim=2, disc_dim=64):
         super(Discriminator, self).__init__()
         self.conv1 = conv2d(img_dim, disc_dim, bn=False)
         self.conv2 = conv2d(disc_dim, disc_dim*2)
         self.conv3 = conv2d(disc_dim*2, disc_dim*4)
         self.conv4 = conv2d(disc_dim*4, disc_dim*8, stride=1)
         self.fc1 = fc(disc_dim*8*8*8, 1)
-        self.fc2 = fc(disc_dim*8*8*8, embedding_num)
+        self.fc2 = fc(disc_dim*8*8*8, category_num)
         
     def forward(self, images):
+        batch_size = images.shape[0]
         h1 = self.conv1(images)
         h2 = self.conv2(h1)
         h3 = self.conv3(h2)
