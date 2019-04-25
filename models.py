@@ -15,9 +15,12 @@ from ops import conv2d, deconv2d, lrelu, fc, batch_norm
 from ops import init_embedding, embedding_lookup, conditional_instance_norm
 
 
-def Generator(images, En, De, embeddings, embedding_ids):
+def Generator(images, En, De, embeddings, embedding_ids, GPU=False):
     encoded_source, encode_layers = En(images)
-    local_embeddings = embedding_lookup(embeddings, embedding_ids)
+    local_embeddings = embedding_lookup(embeddings, embedding_ids, GPU=GPU)
+    if GPU:
+        encoded_source = encoded_source.cuda()
+        local_embeddings = local_embeddings.cuda()
     embedded = torch.cat((encoded_source, local_embeddings), 1)
     fake_target = De(embedded, encode_layers)
     return fake_target, encoded_source

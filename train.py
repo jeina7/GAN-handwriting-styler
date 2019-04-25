@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 import os
 import time, datetime
+import numpy as np
 
 from utils import scale_back, merge, save_concat_images, denorm_image
 from dataset import TrainDataProvider, InjectDataProvider, NeverEndingLoopingProvider
@@ -22,32 +23,25 @@ EMBEDDING_DIM = 128
 BATCH_SIZE = 32
 IMG_SIZE = 64
 DATA_DIR = './data/'
-sample_path = './fake_sample/'
 
 EMBEDDINGS = init_embedding(FONTS_NUM, EMBEDDING_DIM)
-
-data_provider = TrainDataProvider(DATA_DIR, filter_by=range(FONTS_NUM))
-total_batches = data_provider.compute_total_batch_num(BATCH_SIZE)
-
-# fixed_source
-train_batch_iter = data_provider.get_train_iter(BATCH_SIZE)
-for _, _, batch_images in train_batch_iter:
-    fixed_batch = batch_images
-    fixed_source = fixed_batch[:, 1, :, :].reshape(BATCH_SIZE, 1, IMG_SIZE, IMG_SIZE)
-    if GPU:
-        fixed_source = fixed_source.cuda()
-    break
+if GPU:
+  EMBEDDINGS = EMBEDDINGS.cuda()
 
 En = Encoder()
 De = Decoder()
 D = Discriminator(category_num=FONTS_NUM)
     
-# L1 loss
-l1_criterion = nn.L1Loss(size_average=True)
-# binary real/fake loss, category loss
-bce_criterion = nn.BCEWithLogitsLoss(size_average=True)
-# constant loss
-mse_criterion = nn.MSELoss(size_average=True)
+# L1 loss, binary real/fake loss, category loss, constant loss
+if GPU:
+    l1_criterion = nn.L1Loss(size_average=True).cuda()
+    bce_criterion = nn.BCEWithLogitsLoss(size_average=True).cuda()
+    mse_criterion = nn.MSELoss(size_average=True).cuda()
+else:
+    l1_criterion = nn.L1Loss(size_average=True)
+    bce_criterion = nn.BCEWithLogitsLoss(size_average=True)
+    mse_criterion = nn.MSELoss(size_average=True)
+
 
 # optimizer
 G_parameters = list(En.parameters()) + list(De.parameters())
@@ -58,12 +52,9 @@ if GPU:
     En.cuda()
     De.cuda()
     D.cuda()
-    l1_criterion.cuda()
-    bce_criterion.cuda()
-    mse_criterion.cuda()
 
     
-def train(max_epoch, schedule, log_step, sample_step, lr, sample_path, fine_tune=False, flip_labels=False):
+def train(max_epoch, schedule, log_step, sample_step, lr, data_dir, sample_path, fine_tune=False, flip_labels=False):
     if fine_tune:
         L1_penalty, Lconst_penalty = 500, 1000
     else:
@@ -71,6 +62,18 @@ def train(max_epoch, schedule, log_step, sample_step, lr, sample_path, fine_tune
         
     count = 0
     l1_losses, const_losses, category_losses, d_losses, g_losses = list(), list(), list(), list(), list()
+    
+    data_provider = TrainDataProvider(data_dir, filter_by=range(FONTS_NUM))
+    total_batches = data_provider.compute_total_batch_num(BATCH_SIZE)
+
+    # fixed_source
+    train_batch_iter = data_provider.get_train_iter(BATCH_SIZE)
+    for _, _, batch_images in train_batch_iter:
+        fixed_batch = batch_images
+        fixed_source = fixed_batch[:, 1, :, :].reshape(BATCH_SIZE, 1, IMG_SIZE, IMG_SIZE)
+        if GPU:
+            fixed_source = fixed_source.cuda()
+        break
     
     for epoch in range(max_epoch):
         if (epoch + 1) % schedule == 0:
@@ -97,7 +100,7 @@ def train(max_epoch, schedule, log_step, sample_step, lr, sample_path, fine_tune
             real_source = batch_images[:, 1, :, :].view([BATCH_SIZE, 1, IMG_SIZE, IMG_SIZE])
             
             # generate fake image form source image
-            fake_target, encoded_source = Generator(real_source, En, De, EMBEDDINGS, embedding_ids)
+            fake_target, encoded_source = Generator(real_source, En, De, EMBEDDINGS, embedding_ids, GPU=GPU)
             
             real_TS = torch.cat([real_source, real_target], dim=1)
             fake_TS = torch.cat([real_source, fake_target], dim=1)
@@ -113,21 +116,29 @@ def train(max_epoch, schedule, log_step, sample_step, lr, sample_path, fine_tune
             # category loss
             real_category = torch.from_numpy(np.eye(FONTS_NUM)[embedding_ids]).float()
             if GPU:
-                real_category.cuda()
+                real_category = real_category.cuda()
             real_category_loss = bce_criterion(real_cat_logit, real_category)
             fake_category_loss = bce_criterion(fake_cat_logit, real_category)
             category_loss = 0.5 * (real_category_loss + fake_category_loss)
             
+            # labels
+            if GPU:
+                one_labels = torch.ones([BATCH_SIZE, 1]).cuda()
+                zero_labels = torch.zeros([BATCH_SIZE, 1]).cuda()
+            else:
+                one_labels = torch.ones([BATCH_SIZE, 1])
+                zero_labels = torch.zeros([BATCH_SIZE, 1])
+            
             # binary loss - T/F
-            real_binary_loss = bce_criterion(real_score_logit, torch.ones([BATCH_SIZE, 1]))
-            fake_binary_loss = bce_criterion(fake_score_logit, torch.zeros([BATCH_SIZE, 1]))
+            real_binary_loss = bce_criterion(real_score_logit, one_labels)
+            fake_binary_loss = bce_criterion(fake_score_logit, zero_labels)
             binary_loss = real_binary_loss + fake_binary_loss
             
             # L1 loss between real and fake images
             l1_loss = L1_penalty * l1_criterion(real_target, fake_target)
             
             # cheat loss for generator to fool discriminator
-            cheat_loss = bce_criterion(fake_score_logit, torch.ones([BATCH_SIZE, 1]))
+            cheat_loss = bce_criterion(fake_score_logit, one_labels)
             
             # g_loss, d_loss
             g_loss = cheat_loss + l1_loss + fake_category_loss + const_loss
@@ -161,6 +172,6 @@ def train(max_epoch, schedule, log_step, sample_step, lr, sample_path, fine_tune
                 
             # save image
             if (i+1) % sample_step == 0:
-                fixed_fake_images = Generator(fixed_source, En, De, EMBEDDINGS, embedding_ids)[0]
+                fixed_fake_images = Generator(fixed_source, En, De, EMBEDDINGS, embedding_ids, GPU=GPU)[0]
                 save_image(denorm_image(fixed_fake_images.data), \
                            os.path.join(sample_path, 'fake_samples-%d-%d.png' % (epoch+1, i+1)), nrow=8)

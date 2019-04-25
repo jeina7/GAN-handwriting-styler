@@ -55,12 +55,15 @@ def init_embedding(embedding_num, embedding_dim, stddev=0.01):
     return embedding
 
 
-def embedding_lookup(embeddings, embedding_ids):
+def embedding_lookup(embeddings, embedding_ids, GPU=False):
     batch_size = len(embedding_ids)
     embedding_dim = embeddings.shape[3]
     local_embeddings = []
     for id_ in embedding_ids:
-        local_embeddings.append(embeddings[id_].data.numpy())
+        if GPU:
+            local_embeddings.append(embeddings[id_].cpu().numpy())
+        else:
+            local_embeddings.append(embeddings[id_].data.numpy())
     local_embeddings = torch.from_numpy(np.array(local_embeddings))
     local_embeddings = local_embeddings.reshape(batch_size, embedding_dim, 1, 1)
     return local_embeddings
