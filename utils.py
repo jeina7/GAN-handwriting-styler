@@ -33,6 +33,11 @@ def normalize_image(img):
     return normalized
 
 
+def denorm_image(x):
+    out = (x + 1) / 2
+    return out.clamp(0, 1)
+
+
 def read_split_image(img):
     mat = misc.imread(img).astype(np.float)
     side = int(mat.shape[1] / 2)
