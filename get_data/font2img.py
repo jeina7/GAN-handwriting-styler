@@ -109,18 +109,9 @@ def draw_handwriting(ch, src_font, canvas_size, src_offset, dst_folder):
 def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_offset, sample_dir, \
              fixed_sample=False, all_sample=False, handwriting_dir=False):
     trg_fonts = glob.glob(os.path.join(TRG_PATH, '*.ttf'))
+    tfg_fonts.sort()
     src_font = glob.glob(os.path.join(SRC_PATH, '*.ttf'))[0]
     src_font = ImageFont.truetype(src_font, size=char_size)
-
-#     dst_filter_hashes = set(filter_recurring_hash(charset, dst_font, canvas_size, 0, 0))
-#     dst_offset = get_font_offset(charset, dst_font, canvas_size, dst_filter_hashes)
-#     print("Src font offset : ", [x_offset, y_offset])
-#     print("Dst font offset : ", dst_offset)
-
-#     filter_hashes = set()
-#     if filter_by_hash:
-#         filter_hashes = set(filter_recurring_hash(charset, dst_font, canvas_size, dst_offset[0], dst_offset[1]))
-#         print("filter hashes -> %s" % (",".join([str(h) for h in filter_hashes])))
 
     count = 0
 
