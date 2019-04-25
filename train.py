@@ -63,7 +63,7 @@ if GPU:
     mse_criterion.cuda()
 
     
-def train(max_epoch, schedule, log_step, sample_step, lr, fine_tune=False, flip_labels=False):
+def train(max_epoch, schedule, log_step, sample_step, lr, sample_path, fine_tune=False, flip_labels=False):
     if fine_tune:
         L1_penalty, Lconst_penalty = 500, 1000
     else:
