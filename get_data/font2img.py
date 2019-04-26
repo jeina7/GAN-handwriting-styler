@@ -33,17 +33,19 @@ def get_offset(ch, font, canvas_size):
 
 
 def draw_single_char(ch, font, canvas_size, x_offset, y_offset):
-    img = Image.new("RGB", (canvas_size, canvas_size), (255, 255, 255)).convert('L')
-    draw = ImageDraw.Draw(img)
-    draw.text((x_offset, y_offset), ch, 0, font=font)
-    return img
+    image = Image.new('L', (canvas_size, canvas_size), color=255)
+    drawing = ImageDraw.Draw(image)
+    w, h = drawing.textsize(ch, font=font)
+    drawing.text(
+        ((canvas_size-w)/2, (canvas_size-h)/2),
+        ch,
+        fill=(0),
+        font=font
+    )
+    return image
 
 
 def draw_example(ch, src_font, dst_font, canvas_size, src_offset, dst_offset):
-    # check the filter example in the hashes or not
-#     dst_hash = hash(dst_img.tobytes())
-#     if dst_hash in filter_hashes:
-#         return None
     dst_img = draw_single_char(ch, dst_font, canvas_size, dst_offset[0], dst_offset[1])
     src_img = draw_single_char(ch, src_font, canvas_size, src_offset[0], src_offset[1])
     example_img = Image.new("RGB", (canvas_size * 2, canvas_size), (255, 255, 255)).convert('L')
@@ -60,10 +62,6 @@ def get_font_offset(charset, font, canvas_size):
     count = 0
     for c in sample:
         font_img = draw_single_char(c, font, canvas_size, 0, 0)
-#         font_hash = hash(font_img.tobytes())
-#         if not font_hash in filter_hashes:
-#             font_offset += get_offset(c, font, canvas_size)
-#             count += 1
     font_offset = font_offset / count
     return font_offset
 
@@ -109,7 +107,7 @@ def draw_handwriting(ch, src_font, canvas_size, src_offset, dst_folder):
 def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_offset, sample_dir, \
              fixed_sample=False, all_sample=False, handwriting_dir=False):
     trg_fonts = glob.glob(os.path.join(TRG_PATH, '*.ttf'))
-    tfg_fonts.sort()
+    trg_fonts.sort()
     src_font = glob.glob(os.path.join(SRC_PATH, '*.ttf'))[0]
     src_font = ImageFont.truetype(src_font, size=char_size)
 
@@ -152,7 +150,7 @@ def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_of
             if e:
                 e.save(os.path.join(sample_dir, "%d_%04d_train.png" % (label, count)))
                 count += 1
-                if count % 100 == 0:
+                if count % 5000 == 0:
                     print("processed %d chars" % count)
                        
         # validation dataset
@@ -167,7 +165,7 @@ def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_of
             if e:
                 e.save(os.path.join(sample_dir, "%d_%04d_val.png" % (label, count)))
                 count += 1
-                if count % 100 == 0:
+                if count % 5000 == 0:
                     print("processed %d chars" % count)
         return
 
@@ -180,10 +178,11 @@ def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_of
                 if count % 1000 == 0:
                     print("processed %d chars" % count)
         return
-
+    
     count = 0
     font_label = 0
-    for font in trg_fonts:
+    
+    for font in trg_fonts:            
         font = ImageFont.truetype(font, size=char_size)
         character_count = 0
         for c in charset:
@@ -193,7 +192,7 @@ def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_of
                 e.save(os.path.join(sample_dir, "%d_%04d.png" % (font_label, character_count)))
                 character_count += 1
                 count += 1
-                if count % 1000 == 0:
+                if count % 5000 == 0:
                     print("processed %d chars" % count)
         font_label += 1
     print("processed %d chars, end" % count)

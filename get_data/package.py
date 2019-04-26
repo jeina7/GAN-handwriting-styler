@@ -73,5 +73,3 @@ if __name__ == "__main__":
     val_path = os.path.join(args.save_dir, "val.obj")
     pickle_examples(glob.glob(os.path.join(args.dir, "*.png")), train_path=train_path, val_path=val_path,
                     train_val_split=args.split_ratio, fixed_sample=args.fixed_sample)
-#    pickle_examples(sorted(glob.glob(os.path.join(args.dir, "*.png")), key=lambda e: float(os.path.splitext(os.path.basename(e))[0].replace("_","").replace("train","").replace("val",""))), train_path=train_path, val_path=val_path,
-#                    train_val_split=args.split_ratio, fixed_sample=args.fixed_sample)
