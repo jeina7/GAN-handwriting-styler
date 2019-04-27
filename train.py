@@ -26,7 +26,7 @@ DATA_DIR = './data/'
 
 EMBEDDINGS = init_embedding(FONTS_NUM, EMBEDDING_DIM)
 if GPU:
-  EMBEDDINGS = EMBEDDINGS.cuda()
+    EMBEDDINGS = EMBEDDINGS.cuda()
 
 En = Encoder()
 De = Decoder()
@@ -175,3 +175,5 @@ def train(max_epoch, schedule, log_step, sample_step, lr, data_dir, sample_path,
                 fixed_fake_images = Generator(fixed_source, En, De, EMBEDDINGS, embedding_ids, GPU=GPU)[0]
                 save_image(denorm_image(fixed_fake_images.data), \
                            os.path.join(sample_path, 'fake_samples-%d-%d.png' % (epoch+1, i+1)), nrow=8)
+
+    return l1_losses, const_losses, category_losses, d_losses, g_losses
