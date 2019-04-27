@@ -30,7 +30,7 @@ class Encoder(nn.Module):
     
     def __init__(self, img_dim=1, conv_dim=64):
         super(Encoder, self).__init__()
-        self.conv1 = conv2d(img_dim, conv_dim)
+        self.conv1 = conv2d(img_dim, conv_dim, lrelu=False, bn=False)
         self.conv2 = conv2d(conv_dim, conv_dim*2)
         self.conv3 = conv2d(conv_dim*2, conv_dim*4)
         self.conv4 = conv2d(conv_dim*4, conv_dim*8)
@@ -66,9 +66,9 @@ class Decoder(nn.Module):
     
     def __init__(self, img_dim=1, embedded_dim=640, conv_dim=64):
         super(Decoder, self).__init__()
-        self.deconv1 = deconv2d(embedded_dim, conv_dim*8)
-        self.deconv2 = deconv2d(conv_dim*16, conv_dim*8)
-        self.deconv3 = deconv2d(conv_dim*16, conv_dim*8, k_size=4, dilation=2)
+        self.deconv1 = deconv2d(embedded_dim, conv_dim*8, dropout=True)
+        self.deconv2 = deconv2d(conv_dim*16, conv_dim*8, dropout=True)
+        self.deconv3 = deconv2d(conv_dim*16, conv_dim*8, k_size=4, dilation=2, dropout=True)
         self.deconv4 = deconv2d(conv_dim*16, conv_dim*8, k_size=5, dilation=2)
         self.deconv5 = deconv2d(conv_dim*16, conv_dim*4, k_size=4, dilation=2, stride=2)
         self.deconv6 = deconv2d(conv_dim*8, conv_dim*2, k_size=4, dilation=2, stride=2)
