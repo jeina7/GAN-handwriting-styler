@@ -24,15 +24,8 @@ SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
 label_file = os.path.join(SCRIPT_PATH, './2350-hangul.txt')
 OUTPUT_PATH = './output/'
 
-def get_offset(ch, font, canvas_size):
-    font_size = font.getsize(ch)
-    font_offset = font.getoffset(ch)
-    offset_x = canvas_size//2 #- font_size[0]//2
-    offset_y = canvas_size//2 #- font_size[1]//2
-    return [ offset_x, offset_y ]
 
-
-def draw_single_char(ch, font, canvas_size, x_offset, y_offset):
+def draw_single_char(ch, font, canvas_size):
     image = Image.new('L', (canvas_size, canvas_size), color=255)
     drawing = ImageDraw.Draw(image)
     w, h = drawing.textsize(ch, font=font)
@@ -45,9 +38,9 @@ def draw_single_char(ch, font, canvas_size, x_offset, y_offset):
     return image
 
 
-def draw_example(ch, src_font, dst_font, canvas_size, src_offset, dst_offset):
-    dst_img = draw_single_char(ch, dst_font, canvas_size, dst_offset[0], dst_offset[1])
-    src_img = draw_single_char(ch, src_font, canvas_size, src_offset[0], src_offset[1])
+def draw_example(ch, src_font, dst_font, canvas_size):
+    dst_img = draw_single_char(ch, dst_font, canvas_size)
+    src_img = draw_single_char(ch, src_font, canvas_size)
     example_img = Image.new("RGB", (canvas_size * 2, canvas_size), (255, 255, 255)).convert('L')
     example_img.paste(dst_img, (0, 0))
     example_img.paste(src_img, (canvas_size, 0))
@@ -79,6 +72,7 @@ def filter_recurring_hash(charset, font, canvas_size, x_offset, y_offset):
     recurring_hashes = filter(lambda d: d[1] > 2, hash_count.items())
     return [rh[0] for rh in recurring_hashes]
 
+
 def select_sample(charset):
     # this returns 399 samples from KR charset
     # we selected 399 characters to sample as uniformly as possible
@@ -91,21 +85,17 @@ def select_sample(charset):
     return samples
 
 
-def draw_handwriting(ch, src_font, canvas_size, src_offset, dst_folder):
-    s = ch.decode('utf-8').encode('raw_unicode_escape').replace("\\u","").upper()
-    dst_path = dst_folder + "/uni" + s + ".png"
-    if not os.path.exists(dst_path):
-        return
+def draw_handwriting(ch, src_font, canvas_size, dst_folder, label, count):
+    dst_path = dst_folder + "%d_%04d" % (label, count) + ".png"
     dst_img = Image.open(dst_path)
-    # check the filter example in the hashes or not
-    src_img = draw_single_char(ch, src_font, canvas_size, src_offset[0], src_offset[1])
+    src_img = draw_single_char(ch, src_font, canvas_size)
     example_img = Image.new("RGB", (canvas_size * 2, canvas_size), (255, 255, 255)).convert('L')
     example_img.paste(dst_img, (0, 0))
     example_img.paste(src_img, (canvas_size, 0))
     return example_img
 
 def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_offset, sample_dir, \
-             fixed_sample=False, all_sample=False, handwriting_dir=False):
+             fixed_sample=False, all_sample=False, handwriting_dir='../handwritings/50_sample-160/'):
     trg_fonts = glob.glob(os.path.join(TRG_PATH, '*.ttf'))
     trg_fonts.sort()
     src_font = glob.glob(os.path.join(SRC_PATH, '*.ttf'))[0]
@@ -114,32 +104,30 @@ def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_of
     count = 0
 
     if handwriting_dir:
-        if not os.path.exists(sample_dir):
-            os.makedirs(sample_dir)
+        label = 50
+        label_file = '../handwritings/160-handwritings.txt'
+        with io.open(label_file, 'r', encoding='utf-8') as f:
+            charset = f.read().splitlines()
+            charset.sort()
             
         # train dataset
-        train_set = []
         for c in charset:
-            e = draw_handwriting(c, src_font, canvas_size, [x_offset, y_offset], handwriting_dir)
+            if count > 159:
+                return
+            e = draw_handwriting(c, src_font, canvas_size, handwriting_dir, label, count)
             if e:
-                code = c.decode('utf-8').encode('raw_unicode_escape').replace("\\u","").upper()
-                e.save(os.path.join(sample_dir, "%d_%s_train.png" % (label, code)))
-                train_set.append(c)
+                e.save(os.path.join(sample_dir, "%d_%04d.png" % (label, count)))
                 count += 1
-                if count % 100 == 0:
-                    print("processed %d chars" % count)
                        
         # validation dataset
-        np.random.shuffle(charset)
-        count = 0
-        for c in charset:
-            e = draw_example(c, src_font, dst_font, canvas_size, [x_offset, y_offset], dst_offset, filter_hashes=set())
-            if e:
-                code = c.decode('utf-8').encode('raw_unicode_escape').replace("\\u","").upper()
-                e.save(os.path.join(sample_dir, "%d_%s_val.png" % (label, code)))
-                count += 1
-                if count % 100 == 0:
-                    print("processed %d chars" % count)
+#         np.random.shuffle(charset)
+#         count = 0
+#         for c in charset:
+#             e = draw_example(c, src_font, dst_font, canvas_size, [x_offset, y_offset], dst_offset, filter_hashes=set())
+#             if e:
+#                 code = c.decode('utf-8').encode('raw_unicode_escape').replace("\\u","").upper()
+#                 e.save(os.path.join(sample_dir, "%d_%s_val.png" % (label, code)))
+#                 count += 1
         return
 
     if fixed_sample:
@@ -154,19 +142,19 @@ def font2img(SRC_PATH, TRG_PATH, charset, char_size, canvas_size, x_offset, y_of
                     print("processed %d chars" % count)
                        
         # validation dataset
-        np.random.shuffle(charset)
-        count = 0
-        for c in charset:
-            if count == sample_count:
-                break
-            if c in train_set:
-                continue
-            e = draw_example(c, src_font, dst_font, canvas_size, [x_offset, y_offset], dst_offset, filter_hashes=set())
-            if e:
-                e.save(os.path.join(sample_dir, "%d_%04d_val.png" % (label, count)))
-                count += 1
-                if count % 5000 == 0:
-                    print("processed %d chars" % count)
+#         np.random.shuffle(charset)
+#         count = 0
+#         for c in charset:
+#             if count == sample_count:
+#                 break
+#             if c in train_set:
+#                 continue
+#             e = draw_example(c, src_font, dst_font, canvas_size, [x_offset, y_offset], dst_offset, filter_hashes=set())
+#             if e:
+#                 e.save(os.path.join(sample_dir, "%d_%04d_val.png" % (label, count)))
+#                 count += 1
+#                 if count % 5000 == 0:
+#                     print("processed %d chars" % count)
         return
 
     if all_sample:
@@ -204,10 +192,10 @@ parser.add_argument('--char_size', dest='char_size', type=int, default=45, help=
 parser.add_argument('--canvas_size', dest='canvas_size', type=int, default=64, help='canvas size')
 parser.add_argument('--x_offset', dest='x_offset', type=int, default=14, help='x offset')
 parser.add_argument('--y_offset', dest='y_offset', type=int, default=8, help='y_offset')
-parser.add_argument('--sample_dir', dest='sample_dir', help='directory to save examples')
+parser.add_argument('--sample_dir', dest='sample_dir', default=OUTPUT_PATH, help='directory to save examples')
 parser.add_argument('--fixed_sample', dest='fixed_sample', type=int, default=0, help='pick fixed samples (399 training set, 500 test set). Note that this should not be used with --suffle.')
 parser.add_argument('--all_sample', dest='all_sample', type=int, default=0, help='pick all possible samples (except for missing characters)')
-parser.add_argument('--handwriting_dir', dest='handwriting_dir', default=0, help='pick handwriting samples (399 training set). Note that this should not be used with --suffle.')
+parser.add_argument('--handwriting_dir', dest='handwriting_dir', default='../handwritings/50_sample-160/', help='pick handwriting samples (399 training set). Note that this should not be used with --suffle.')
 
 args = parser.parse_args()
 
@@ -217,4 +205,4 @@ if __name__ == "__main__":
     if args.shuffle:
         np.random.shuffle(charset)
     font2img(SRC_PATH, TRG_PATH, charset, args.char_size, args.canvas_size, args.x_offset, args.y_offset,
-             OUTPUT_PATH, args.fixed_sample, args.all_sample, args.handwriting_dir)
+             args.sample_dir, args.fixed_sample, args.all_sample, args.handwriting_dir)

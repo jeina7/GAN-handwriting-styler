@@ -9,7 +9,7 @@ import pickle as pickle
 import random
 
 
-def pickle_examples(paths, train_path, val_path, train_val_split=0.2, fixed_sample=True):
+def pickle_examples(paths, train_path, val_path, train_val_split=0, fixed_sample=True):
     """
     Compile a list of examples into pickled format, so during
     the training, all io will happen in memory
@@ -61,7 +61,7 @@ def pickle_examples(paths, train_path, val_path, train_val_split=0.2, fixed_samp
 parser = argparse.ArgumentParser(description='Compile list of images into a pickled object for training')
 parser.add_argument('--dir', dest='dir', default='./output/', help='path of examples')
 parser.add_argument('--save_dir', dest='save_dir', default='../data/', help='path to save pickled files')
-parser.add_argument('--split_ratio', type=float, default=0.2, dest='split_ratio',
+parser.add_argument('--split_ratio', type=float, default=0, dest='split_ratio',
                     help='split ratio between train and val')
 parser.add_argument('--fixed_sample', dest='fixed_sample', default=1, help='binarize fixed samples (we distiguish train/validation data with its file name).')
 args = parser.parse_args()
