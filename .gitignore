@@ -8,3 +8,5 @@
 __pycache__/
 *.ipynb
 *.png
+handwritings/
+png_logs/
