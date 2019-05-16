@@ -6,7 +6,6 @@
 *.gz
 *.jpeg
 __pycache__/
-*.ipynb
 *.png
 handwritings/
 png_logs/
