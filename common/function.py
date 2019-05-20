@@ -64,6 +64,8 @@ def embedding_lookup(embeddings, embedding_ids, GPU=False):
         else:
             local_embeddings.append(embeddings[id_].data.numpy())
     local_embeddings = torch.from_numpy(np.array(local_embeddings))
+    if GPU:
+        local_embeddings = local_embeddings.cuda()
     local_embeddings = local_embeddings.reshape(batch_size, embedding_dim, 1, 1)
     return local_embeddings
 
