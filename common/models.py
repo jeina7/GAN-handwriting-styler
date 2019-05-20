@@ -1,18 +1,9 @@
+# -*- coding: utf-8 -*-
+import torch
+import torch.nn as nn
+from .function import conv2d, deconv2d, lrelu, fc, embedding_lookup
 import warnings
 warnings.filterwarnings("ignore")
-
-import torch
-import torchvision
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-from torch.autograd import Variable
-from torch.utils.data import DataLoader, TensorDataset
-
-from utils import scale_back, merge, save_concat_images
-from dataset import TrainDataProvider, InjectDataProvider, NeverEndingLoopingProvider
-from ops import conv2d, deconv2d, lrelu, fc, batch_norm
-from ops import init_embedding, embedding_lookup, conditional_instance_norm
 
 
 def Generator(images, En, De, embeddings, embedding_ids, GPU=False):
@@ -30,7 +21,7 @@ class Encoder(nn.Module):
     
     def __init__(self, img_dim=1, conv_dim=64):
         super(Encoder, self).__init__()
-        self.conv1 = conv2d(img_dim, conv_dim, lrelu=False, bn=False)
+        self.conv1 = conv2d(img_dim, conv_dim, bn=False)
         self.conv2 = conv2d(conv_dim, conv_dim*2)
         self.conv3 = conv2d(conv_dim*2, conv_dim*4)
         self.conv4 = conv2d(conv_dim*4, conv_dim*8)
