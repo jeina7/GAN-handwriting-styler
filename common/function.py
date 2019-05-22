@@ -15,7 +15,7 @@ def batch_norm(c_out, momentum=0.1):
     return nn.BatchNorm2d(c_out, momentum=momentum)
 
 
-def conv2d(c_in, c_out, k_size=5, stride=2, pad=2, dilation=2, bn=True, lrelu=True, leak=0.2):
+def conv2d(c_in, c_out, k_size=3, stride=2, pad=1, dilation=1, bn=True, lrelu=True, leak=0.2):
     layers = []
     if lrelu:
         layers.append(nn.LeakyReLU(leak))

@@ -21,9 +21,9 @@ class Encoder(nn.Module):
     
     def __init__(self, img_dim=1, conv_dim=64):
         super(Encoder, self).__init__()
-        self.conv1 = conv2d(img_dim, conv_dim, lrelu=False, bn=False)
-        self.conv2 = conv2d(conv_dim, conv_dim*2)
-        self.conv3 = conv2d(conv_dim*2, conv_dim*4)
+        self.conv1 = conv2d(img_dim, conv_dim, k_size=5, stride=2, pad=2, dilation=2, lrelu=False, bn=False)
+        self.conv2 = conv2d(conv_dim, conv_dim*2, k_size=5, stride=2, pad=2, dilation=2)
+        self.conv3 = conv2d(conv_dim*2, conv_dim*4, k_size=4, stride=2, pad=1, dilation=1)
         self.conv4 = conv2d(conv_dim*4, conv_dim*8)
         self.conv5 = conv2d(conv_dim*8, conv_dim*8)
         self.conv6 = conv2d(conv_dim*8, conv_dim*8)
