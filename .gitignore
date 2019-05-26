@@ -11,3 +11,5 @@ handwritings/
 png_logs/
 *.obj
 model_checkpoint_fail/
+model_checkpoint/
+
