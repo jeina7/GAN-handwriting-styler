@@ -10,7 +10,8 @@ __pycache__/
 handwritings/
 png_logs/
 *.obj
-model_checkpoint_fail_1
+model_checkpoint_fail_2/
+model_checkpoint_fail_1/
 model_checkpoint_fail/
 model_checkpoint/
 
