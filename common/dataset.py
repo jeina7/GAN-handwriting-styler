@@ -45,11 +45,12 @@ def get_batch_iter(examples, batch_size, augment):
         for i in range(0, len(padded), batch_size):
             batch = padded[i: i + batch_size]
             labels = [e[0] for e in batch]
-            image = [process(e[1]) for e in batch]
+            charid = [e[1] for e in batch]
+            image = [process(e[2]) for e in batch]
             image = np.array(image).astype(np.float32)
             image = torch.from_numpy(image)
             # stack into tensor
-            yield labels, image
+            yield labels, charid, image
 
     return batch_iter()
 
@@ -77,20 +78,25 @@ class PickledImageProvider(object):
 
 
 class TrainDataProvider(object):
-    def __init__(self, data_dir, train_name="train.obj", val_name="val.obj", filter_by=None, verbose=True):
+    def __init__(self, data_dir, train_name="train.obj", val_name="val.obj", filter_by=None, verbose=True, val=True):
         self.data_dir = data_dir
         self.filter_by = filter_by
         self.train_path = os.path.join(self.data_dir, train_name)
         self.val_path = os.path.join(self.data_dir, val_name)
         self.train = PickledImageProvider(self.train_path, verbose)
-        self.val = PickledImageProvider(self.val_path, verbose)
+        if val:
+            self.val = PickledImageProvider(self.val_path, verbose)
         if self.filter_by:
             if verbose:
                 print("filter by label ->", filter_by)
             self.train.examples = [e for e in self.train.examples if e[0] in self.filter_by]
-            self.val.examples = [e for e in self.val.examples if e[0] in self.filter_by]
+            if val:
+                self.val.examples = [e for e in self.val.examples if e[0] in self.filter_by]
         if verbose:
-            print("train examples -> %d, val examples -> %d" % (len(self.train.examples), len(self.val.examples)))
+            if val:
+                print("train examples -> %d, val examples -> %d" % (len(self.train.examples), len(self.val.examples)))
+            else:
+                print("train examples -> %d" % (len(self.train.examples)))
 
     def get_train_iter(self, batch_size, shuffle=True):
         training_examples = self.train.examples[:]
