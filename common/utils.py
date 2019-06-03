@@ -10,6 +10,8 @@ import scipy.misc as misc
 import numpy as np
 from io import BytesIO
 
+import matplotlib.pyplot as plt
+
 
 def pad_seq(seq, batch_size):
     # pad the sequence to be the multiples of batch_size
@@ -80,3 +82,18 @@ def compile_frames_to_gif(frame_dir, gif_file):
     images = [misc.imresize(imageio.imread(f), interp='nearest', size=0.33) for f in frames]
     imageio.mimsave(gif_file, images, duration=0.1)
     return gif_file
+
+
+def show_comparison(font_num, real_targets, fake_targets, show_num=8):
+    plt.figure(figsize=(14, show_num//2+1))
+    for idx in range(show_num):
+        plt.subplot(show_num//4, 8, 2*idx+1)
+        plt.imshow(real_targets[font_num][idx].reshape(128, 128), cmap='gray')
+        plt.title("Real [%d]" % font_num)
+        plt.axis('off')
+
+        plt.subplot(show_num//4, 8, 2*idx+2)
+        plt.imshow(fake_targets[font_num][idx].reshape(128, 128), cmap='gray')
+        plt.title("Fake [%d]" % font_num)
+        plt.axis('off')
+    plt.show()
