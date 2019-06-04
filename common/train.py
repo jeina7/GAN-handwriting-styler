@@ -1,94 +1,106 @@
-import torch
-import torchvision
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-from torch.autograd import Variable
-from torchvision.utils import save_image
-from torch.utils.data import DataLoader, TensorDataset
-
-import os
-import time, datetime
+import os, glob, time, datetime
 import numpy as np
+from PIL import Image
 
-from utils import scale_back, merge, save_concat_images, denorm_image
-from dataset import TrainDataProvider, InjectDataProvider, NeverEndingLoopingProvider
-from ops import conv2d, deconv2d, lrelu, fc, batch_norm
-from ops import init_embedding, embedding_lookup, conditional_instance_norm
-from models import Encoder, Decoder, Discriminator, Generator
+import torch
+import torch.nn as nn
+from torchvision.utils import save_image
+
+from common.dataset import TrainDataProvider
+from common.function import init_embedding
+from common.models import Encoder, Decoder, Discriminator, Generator
+from common.utils import denorm_image
+
 
 GPU = torch.cuda.is_available()
-FONTS_NUM = 30
+
+data_dir = './dataset/'
+model_dir = './model_save/'
+fixed_dir = './fixed_sample'
+embeddings = torch.load(os.path.join(fixed_dir, 'EMBEDDINGS.pkl'))
+fixed_source = torch.load(os.path.join(fixed_dir, 'fixed_source_all.pkl'))
+fixed_target = torch.load(os.path.join(fixed_dir, 'fixed_target_all.pkl'))
+fixed_label = torch.load(os.path.join(fixed_dir, 'fixed_label_all.pkl'))
+
+FONTS_NUM = 25
+EMBEDDING_NUM = 100
+BATCH_SIZE = 16
+IMG_SIZE = 128
 EMBEDDING_DIM = 128
-BATCH_SIZE = 32
-IMG_SIZE = 64
-DATA_DIR = './data/'
 
-EMBEDDINGS = init_embedding(FONTS_NUM, EMBEDDING_DIM)
-if GPU:
-    EMBEDDINGS = EMBEDDINGS.cuda()
+data_provider = TrainDataProvider(data_dir)
+total_batches = data_provider.compute_total_batch_num(BATCH_SIZE)
+print("total batches:", total_batches)
 
-En = Encoder()
-De = Decoder()
-D = Discriminator(category_num=FONTS_NUM)
+
+def train(max_epoch, schedule, data_dir, save_path, to_model_path, lr=0.001, \
+          log_step=100, sample_step=350, fine_tune=False, flip_labels=False, \
+          restore=None, from_model_path=False, GPU=True):
     
-# L1 loss, binary real/fake loss, category loss, constant loss
-if GPU:
-    l1_criterion = nn.L1Loss(size_average=True).cuda()
-    bce_criterion = nn.BCEWithLogitsLoss(size_average=True).cuda()
-    mse_criterion = nn.MSELoss(size_average=True).cuda()
-else:
-    l1_criterion = nn.L1Loss(size_average=True)
-    bce_criterion = nn.BCEWithLogitsLoss(size_average=True)
-    mse_criterion = nn.MSELoss(size_average=True)
-
-
-# optimizer
-G_parameters = list(En.parameters()) + list(De.parameters())
-g_optimizer = torch.optim.Adam(G_parameters, betas=(0.5, 0.999))
-d_optimizer = torch.optim.Adam(D.parameters(), betas=(0.5, 0.999))
-
-if GPU:
-    En.cuda()
-    De.cuda()
-    D.cuda()
-
-    
-def train(max_epoch, schedule, log_step, sample_step, lr, data_dir, sample_path, fine_tune=False, flip_labels=False):
-    if fine_tune:
-        L1_penalty, Lconst_penalty = 500, 1000
-    else:
+    # Fine Tuning coefficient
+    if not fine_tune:
         L1_penalty, Lconst_penalty = 100, 15
+    else:
+        L1_penalty, Lconst_penalty = 500, 1000
+
+    # Get Models
+    En = Encoder()
+    De = Decoder()
+    D = Discriminator(category_num=FONTS_NUM)
+    if GPU:
+        En.cuda()
+        De.cuda()
+        D.cuda()
+    
+    # Use pre-trained Model
+    # restore에 [encoder_path, decoder_path, discriminator_path] 형태로 인자 넣기
+    if restore:
+        encoder_path, decoder_path, discriminator_path = restore
+        prev_epoch = int(encoder_path.split('-')[0])
+        En.load_state_dict(torch.load(os.path.join(from_model_path, encoder_path)))
+        De.load_state_dict(torch.load(os.path.join(from_model_path, decoder_path)))
+        D.load_state_dict(torch.load(os.path.join(from_model_path, discriminator_path)))
+        print("%d epoch trained model has restored" % prev_epoch)
+    else:
+        prev_epoch = 0
+        print("New model training start")
+
         
-    count = 0
+    # L1 loss, binary real/fake loss, category loss, constant loss
+    if GPU:
+        l1_criterion = nn.L1Loss(size_average=True).cuda()
+        bce_criterion = nn.BCEWithLogitsLoss(size_average=True).cuda()
+        mse_criterion = nn.MSELoss(size_average=True).cuda()
+    else:
+        l1_criterion = nn.L1Loss(size_average=True)
+        bce_criterion = nn.BCEWithLogitsLoss(size_average=True)
+        mse_criterion = nn.MSELoss(size_average=True)
+
+
+    # optimizer
+    G_parameters = list(En.parameters()) + list(De.parameters())
+    g_optimizer = torch.optim.Adam(G_parameters, betas=(0.5, 0.999))
+    d_optimizer = torch.optim.Adam(D.parameters(), betas=(0.5, 0.999))
+    
+    # losses lists
     l1_losses, const_losses, category_losses, d_losses, g_losses = list(), list(), list(), list(), list()
     
-    data_provider = TrainDataProvider(data_dir, filter_by=range(FONTS_NUM))
-    total_batches = data_provider.compute_total_batch_num(BATCH_SIZE)
-
-    # fixed_source
-    train_batch_iter = data_provider.get_train_iter(BATCH_SIZE)
-    for _, _, batch_images in train_batch_iter:
-        fixed_batch = batch_images
-        fixed_source = fixed_batch[:, 1, :, :].reshape(BATCH_SIZE, 1, IMG_SIZE, IMG_SIZE)
-        if GPU:
-            fixed_source = fixed_source.cuda()
-        break
-    
+    # training
+    count = 0
     for epoch in range(max_epoch):
         if (epoch + 1) % schedule == 0:
-            updated_lr = lr / 2
-            updated_lr = max(updated_lr, 0.0002)
+            updated_lr = max(lr/2, 0.0002)
             for param_group in d_optimizer.param_groups:
                 param_group['lr'] = updated_lr
             for param_group in g_optimizer.param_groups:
                 param_group['lr'] = updated_lr
-            print("decay learning rate from %.5f to %.5f" % (lr, updated_lr))
+            if lr !=  updated_lr:
+                print("decay learning rate from %.5f to %.5f" % (lr, updated_lr))
             lr = updated_lr
             
+        train_batch_iter = data_provider.get_train_iter(BATCH_SIZE)   
         for i, batch in enumerate(train_batch_iter):
-            count += 1
-            labels, codes, batch_images = batch
+            labels, batch_images = batch
             embedding_ids = labels
             if GPU:
                 batch_images = batch_images.cuda()
@@ -100,7 +112,7 @@ def train(max_epoch, schedule, log_step, sample_step, lr, data_dir, sample_path,
             real_source = batch_images[:, 1, :, :].view([BATCH_SIZE, 1, IMG_SIZE, IMG_SIZE])
             
             # generate fake image form source image
-            fake_target, encoded_source = Generator(real_source, En, De, EMBEDDINGS, embedding_ids, GPU=GPU)
+            fake_target, encoded_source = Generator(real_source, En, De, embeddings, embedding_ids, GPU=GPU)
             
             real_TS = torch.cat([real_source, real_target], dim=1)
             fake_TS = torch.cat([real_source, fake_target], dim=1)
@@ -167,13 +179,40 @@ def train(max_epoch, schedule, log_step, sample_step, lr, data_dir, sample_path,
                 time_ = time.time()
                 time_stamp = datetime.datetime.fromtimestamp(time_).strftime('%H:%M:%S')
                 log_format = 'Epoch [%d/%d], step [%d/%d], l1_loss: %.4f, d_loss: %.4f, g_loss: %.4f' % \
-                             (epoch+1, max_epoch, i+1, total_batches, l1_loss.item(), d_loss.item(), g_loss.item())
+                             (int(prev_epoch)+epoch+1, int(prev_epoch)+max_epoch, i+1, total_batches, \
+                              l1_loss.item(), d_loss.item(), g_loss.item())
                 print(time_stamp, log_format)
                 
             # save image
             if (i+1) % sample_step == 0:
-                fixed_fake_images = Generator(fixed_source, En, De, EMBEDDINGS, embedding_ids, GPU=GPU)[0]
+                fixed_fake_images = Generator(fixed_source, En, De, embeddings, fixed_label, GPU=GPU)[0]
                 save_image(denorm_image(fixed_fake_images.data), \
-                           os.path.join(sample_path, 'fake_samples-%d-%d.png' % (epoch+1, i+1)), nrow=8)
+                           os.path.join(save_path, 'fake_samples-%d-%d.png' % (int(prev_epoch)+epoch+1, i+1)), \
+                           nrow=8)
+        
+        if (epoch+1) % 5 == 0:
+            now = datetime.datetime.now()
+            now_date = now.strftime("%m%d")
+            now_time = now.strftime('%H:%M')
+            torch.save(En.state_dict(), os.path.join(to_model_path, '%d-%s-%s-Encoder.pkl' \
+                                                     % (int(prev_epoch)+epoch+1, now_date, now_time)))
+            torch.save(De.state_dict(), os.path.join(to_model_path, '%d-%s-%s-Decoder.pkl' % \
+                                                     (int(prev_epoch)+epoch+1, now_date, now_time)))
+            torch.save(D.state_dict(), os.path.join(to_model_path, '%d-%s-%s-Discriminator.pkl' % \
+                                                    (int(prev_epoch)+epoch+1, now_date, now_time)))
+
+    # save model
+    total_epoch = int(prev_epoch) + int(max_epoch)
+    end = datetime.datetime.now()
+    end_date = end.strftime("%m%d")
+    end_time = end.strftime('%H:%M')
+    torch.save(En.state_dict(), os.path.join(to_model_path, \
+                                             '%d-%s-%s-Encoder.pkl' % (total_epoch, end_date, end_time)))
+    torch.save(De.state_dict(), os.path.join(to_model_path, \
+                                             '%d-%s-%s-Decoder.pkl' % (total_epoch, end_date, end_time)))
+    torch.save(D.state_dict(), os.path.join(to_model_path, \
+                                            '%d-%s-%s-Discriminator.pkl' % (total_epoch, end_date, end_time)))
+    losses = [l1_losses, const_losses, category_losses, d_losses, g_losses]
+    torch.save(losses, os.path.join(to_model_path, '%d-losses.pkl' % total_epoch))
 
     return l1_losses, const_losses, category_losses, d_losses, g_losses
