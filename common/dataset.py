@@ -9,7 +9,7 @@ import torch
 from .utils import pad_seq, bytes_to_file, read_split_image, shift_and_resize_image, normalize_image
 
 
-def get_batch_iter(examples, batch_size, augment):
+def get_batch_iter(examples, batch_size, augment, with_charid=False):
     # the transpose ops requires deterministic
     # batch size, thus comes the padding
     padded = pad_seq(examples, batch_size)
@@ -41,18 +41,25 @@ def get_batch_iter(examples, batch_size, augment):
         finally:
             img.close()
             
-    def batch_iter():
+    def batch_iter(with_charid=with_charid):
         for i in range(0, len(padded), batch_size):
             batch = padded[i: i + batch_size]
             labels = [e[0] for e in batch]
-            charid = [e[1] for e in batch]
-            image = [process(e[2]) for e in batch]
-            image = np.array(image).astype(np.float32)
-            image = torch.from_numpy(image)
-            # stack into tensor
-            yield labels, charid, image
+            if with_charid:
+                charid = [e[1] for e in batch]
+                image = [process(e[2]) for e in batch]
+                image = np.array(image).astype(np.float32)
+                image = torch.from_numpy(image)
+                # stack into tensor
+                yield [labels, charid, image]
+            else:
+                image = [process(e[1]) for e in batch]
+                image = np.array(image).astype(np.float32)
+                image = torch.from_numpy(image)
+                # stack into tensor
+                yield [labels, image]
 
-    return batch_iter()
+    return batch_iter(with_charid=with_charid)
 
 
 class PickledImageProvider(object):
@@ -78,31 +85,43 @@ class PickledImageProvider(object):
 
 
 class TrainDataProvider(object):
-    def __init__(self, data_dir, train_name="train.obj", val_name="val.obj", filter_by=None, verbose=True, val=True):
+    def __init__(self, data_dir, train_name="train.obj", val_name="val.obj", \
+                 filter_by_font=None, filter_by_charid=None, verbose=True, val=True):
         self.data_dir = data_dir
-        self.filter_by = filter_by
+        self.filter_by_font = filter_by_font
+        self.filter_by_charid = filter_by_charid
         self.train_path = os.path.join(self.data_dir, train_name)
         self.val_path = os.path.join(self.data_dir, val_name)
         self.train = PickledImageProvider(self.train_path, verbose)
         if val:
             self.val = PickledImageProvider(self.val_path, verbose)
-        if self.filter_by:
+        if self.filter_by_font:
             if verbose:
-                print("filter by label ->", filter_by)
-            self.train.examples = [e for e in self.train.examples if e[0] in self.filter_by]
+                print("filter by label ->", filter_by_font)
+            self.train.examples = [e for e in self.train.examples if e[0] in self.filter_by_font]
             if val:
-                self.val.examples = [e for e in self.val.examples if e[0] in self.filter_by]
+                self.val.examples = [e for e in self.val.examples if e[0] in self.filter_by_font]
+        if self.filter_by_charid:
+            if verbose:
+                print("filter by char ->", filter_by_charid)
+            self.train.examples = [e for e in self.train.examples if e[1] in filter_by_charid]
+            if val:
+                self.val.examples = [e for e in self.val.examples if e[1] in filter_by_charid]
         if verbose:
             if val:
                 print("train examples -> %d, val examples -> %d" % (len(self.train.examples), len(self.val.examples)))
             else:
                 print("train examples -> %d" % (len(self.train.examples)))
 
-    def get_train_iter(self, batch_size, shuffle=True):
+    def get_train_iter(self, batch_size, shuffle=True, with_charid=False):
         training_examples = self.train.examples[:]
         if shuffle:
             np.random.shuffle(training_examples)
-        return get_batch_iter(training_examples, batch_size, augment=True)
+           
+        if with_charid:
+            return get_batch_iter(training_examples, batch_size, augment=True, with_charid=True)
+        else:
+            return get_batch_iter(training_examples, batch_size, augment=True)
 
     def get_val_iter(self, batch_size, shuffle=True):
         """
