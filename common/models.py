@@ -6,7 +6,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-def Generator(images, En, De, embeddings, embedding_ids, GPU=False):
+def Generator(images, En, De, embeddings, embedding_ids, GPU=False, encode_layers=False):
     encoded_source, encode_layers = En(images)
     local_embeddings = embedding_lookup(embeddings, embedding_ids, GPU=GPU)
     if GPU:
@@ -14,7 +14,10 @@ def Generator(images, En, De, embeddings, embedding_ids, GPU=False):
         local_embeddings = local_embeddings.cuda()
     embedded = torch.cat((encoded_source, local_embeddings), 1)
     fake_target = De(embedded, encode_layers)
-    return fake_target, encoded_source
+    if encode_layers:
+        return fake_target, encoded_source, encode_layers
+    else:
+        return fake_target, encoded_source
 
 
 class Encoder(nn.Module):
