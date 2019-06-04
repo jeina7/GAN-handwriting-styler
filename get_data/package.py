@@ -63,3 +63,20 @@ def pickle_examples(from_dir, train_path, val_path, train_val_split=0.2, with_ch
                 print("%d imgs saved in val.obj, end" % val_count)
                 print("%d imgs saved in train.obj, end" % train_count)
             return
+        
+        
+def pickle_interpolation_data(from_dir, save_path, char_ids, font_filter):
+    paths = glob.glob(os.path.join(from_dir, "*.png"))
+    with open(save_path, 'wb') as ft:
+        c = 0
+        for p in paths:
+            charid = int(p.split('/')[-1].split('.')[0].split('_')[1])
+            label = int(os.path.basename(p).split("_")[0])
+            if (charid in char_ids) and (label in font_filter):
+                c += 1
+                with open(p, 'rb') as f:
+                    img_bytes = f.read()
+                    example = (label, charid, img_bytes)
+                    pickle.dump(example, ft)
+        print('data num:', c)
+        return
