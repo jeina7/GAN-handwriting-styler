@@ -70,6 +70,31 @@ def embedding_lookup(embeddings, embedding_ids, GPU=False):
     return local_embeddings
 
 
+def interpolated_embedding_lookup(embeddings, interpolated_embedding_ids, grid):
+    batch_size = len(interpolated_embedding_ids)
+    interpolated_embeddings = []
+    embedding_dim = embeddings.shape[3]
+
+    for id_ in interpolated_embedding_ids:
+        interpolated_embeddings.append((embeddings[id_[0]] * (1 - grid) + embeddings[id_[1]] * grid).cpu().numpy())
+    interpolated_embeddings = torch.from_numpy(np.array(interpolated_embeddings)).cuda()
+    interpolated_embeddings = interpolated_embeddings.reshape(batch_size, embedding_dim, 1, 1)
+    return interpolated_embeddings
+
+
+def Interpolate_encoded_sources(interpolated_embedding_ids, grid, all_charid, font_id):
+    interpolated_encoded_sources = []
+
+    for id_ in interpolated_embedding_ids:
+        index_0 = all_charid[font_id]['font'].index(id_[0])
+        index_1 = all_charid[font_id]['font'].index(id_[1])
+        interpolated_encoded_source = (all_charid[font_id]['encoded_source'][index_0] * (1 - grid) + \
+                                       all_charid[font_id]['encoded_source'][index_1]).cpu().detach().numpy()
+        interpolated_encoded_sources.append(interpolated_encoded_source)
+    interpolated_encoded_sources = torch.from_numpy(np.array(interpolated_encoded_sources)).cuda()
+    return interpolated_encoded_sources
+
+
 def conditional_instance_norm(x, ids, labels_num, mixed=False, scope="conditional_instance_norm"):
     with tf.variable_scope(scope):
         shape = x.get_shape().as_list()
