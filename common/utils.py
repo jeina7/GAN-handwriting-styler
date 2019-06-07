@@ -76,12 +76,12 @@ def save_concat_images(imgs, img_path):
     misc.imsave(img_path, concated)
 
 
-def save_gif(gif_path, image_path, charid):
+def save_gif(gif_path, image_path, file_name):
     filenames = sorted(glob.glob(os.path.join(image_path, "*.png")))
     images = []
     for filename in filenames:
         images.append(imageio.imread(filename))
-    imageio.mimsave(os.path.join(gif_path, 'char_%d.gif' % charid), images)
+    imageio.mimsave(os.path.join(gif_path, file_name), images)
 
 
 def show_comparison(font_num, real_targets, fake_targets, show_num=8):
