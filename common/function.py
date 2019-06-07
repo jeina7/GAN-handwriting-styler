@@ -80,33 +80,3 @@ def interpolated_embedding_lookup(embeddings, interpolated_embedding_ids, grid):
     interpolated_embeddings = torch.from_numpy(np.array(interpolated_embeddings)).cuda()
     interpolated_embeddings = interpolated_embeddings.reshape(batch_size, embedding_dim, 1, 1)
     return interpolated_embeddings
-
-
-def Interpolate_encoded_sources(interpolated_embedding_ids, grid, all_charid, font_id):
-    interpolated_encoded_sources = []
-
-    for id_ in interpolated_embedding_ids:
-        index_0 = all_charid[font_id]['font'].index(id_[0])
-        index_1 = all_charid[font_id]['font'].index(id_[1])
-        interpolated_encoded_source = (all_charid[font_id]['encoded_source'][index_0] * (1 - grid) + \
-                                       all_charid[font_id]['encoded_source'][index_1]).cpu().detach().numpy()
-        interpolated_encoded_sources.append(interpolated_encoded_source)
-    interpolated_encoded_sources = torch.from_numpy(np.array(interpolated_encoded_sources)).cuda()
-    return interpolated_encoded_sources
-
-
-def conditional_instance_norm(x, ids, labels_num, mixed=False, scope="conditional_instance_norm"):
-    with tf.variable_scope(scope):
-        shape = x.get_shape().as_list()
-        batch_size, output_filters = shape[0], shape[-1]
-        scale = tf.get_variable("scale", [labels_num, output_filters], tf.float32, tf.constant_initializer(1.0))
-        shift = tf.get_variable("shift", [labels_num, output_filters], tf.float32, tf.constant_initializer(0.0))
-
-        mu, sigma = tf.nn.moments(x, [1, 2], keep_dims=True)
-        norm = (x - mu) / tf.sqrt(sigma + 1e-5)
-
-        batch_scale = tf.reshape(tf.nn.embedding_lookup([scale], ids=ids), [batch_size, 1, 1, output_filters])
-        batch_shift = tf.reshape(tf.nn.embedding_lookup([shift], ids=ids), [batch_size, 1, 1, output_filters])
-
-        z = norm * batch_scale + batch_shift
-        return z
