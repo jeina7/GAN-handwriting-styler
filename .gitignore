@@ -4,6 +4,7 @@
 *.jpg
 *.pdf
 *.gz
+*.pptx
 *.jpeg
 __pycache__/
 *.ipynb
