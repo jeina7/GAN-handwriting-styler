@@ -180,3 +180,15 @@ def centering_image(img, image_size=128, verbose=False, resize_fix_h=False, pad_
     centered_image = add_padding(cropped_image, image_size=image_size, verbose=verbose, pad_value=pad_value)
     
     return centered_image
+
+
+def chars_to_ids(sentence):
+    charset = []
+    for i in range(0xac00,0xd7a4):
+        charset.append(chr(i))
+
+    fixed_char_ids = []
+    for char in sentence:
+        fixed_char_ids.append(charset.index(char))
+        
+    return fixed_char_ids
