@@ -6,7 +6,8 @@ import numpy as np
 import random
 import os
 import torch
-from .utils import pad_seq, bytes_to_file, read_split_image, shift_and_resize_image, normalize_image
+from .utils import pad_seq, bytes_to_file, read_split_image
+from .utils import shift_and_resize_image, normalize_image, centering_image
 
 
 def get_batch_iter(examples, batch_size, augment, with_charid=False):
@@ -147,3 +148,26 @@ class TrainDataProvider(object):
         return self.train_path, self.val_path
     
     
+def save_fixed_sample(sample_size, img_size, fontid, data_dir, save_dir, verbose=True, with_charid=True):
+    data_provider = TrainDataProvider(data_dir, verbose=verbose, val=False)
+    train_batch_iter = data_provider.get_train_iter(sample_size, with_charid=with_charid)
+    for batch in train_batch_iter:
+        font_ids, char_ids, batch_images = batch
+        fixed_batch = batch_images.cuda()
+        fixed_source = fixed_batch[:, 1, :, :].reshape(sample_size, 1, img_size, img_size)
+        fixed_target = fixed_batch[:, 0, :, :].reshape(sample_size, 1, img_size, img_size)
+
+        # centering
+        for idx, (image_S, image_T) in enumerate(zip(fixed_source, fixed_target)):
+            image_S = image_S.cpu().detach().numpy().reshape(img_size, img_size)
+            image_S = centering_image(image_S, resize_fix_h=90)
+            fixed_source[idx] = torch.tensor(image_S).view([1, img_size, img_size])
+            image_T = image_T.cpu().detach().numpy().reshape(img_size, img_size)
+            image_T = centering_image(image_T)
+            fixed_target[idx] = torch.tensor(image_T).view([1, img_size, img_size])
+
+        fixed_label = torch.from_numpy(np.array(font_ids)).cuda()
+        torch.save(fixed_source, os.path.join(save_dir, 'fixed_source_%d.pkl' % fontid))
+        torch.save(fixed_target, os.path.join(save_dir, 'fixed_target_%d.pkl' % fontid))
+        torch.save(fixed_label, os.path.join(save_dir, 'fixed_label_%d.pkl' % fontid))
+        return
