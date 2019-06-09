@@ -22,6 +22,7 @@ def pickle_examples(from_dir, train_path, val_path, train_val_split=0.2, with_ch
             val_count = 0
             train_count = 0
             if with_charid:
+                print('pickle with charid')
                 for p in paths:
                     c += 1
                     label = int(os.path.basename(p).split("_")[0])
