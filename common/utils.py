@@ -101,7 +101,7 @@ def show_comparison(font_num, real_targets, fake_targets, show_num=8):
     plt.show()
     
     
-def tight_crop_image(img, verbose=False, resize_fix_h=False):
+def tight_crop_image(img, verbose=False, resize_fix=False):
     img_size = img.shape[0]
     full_white = img_size
     col_sum = np.where(full_white - np.sum(img, axis=0) > 1)
@@ -116,10 +116,14 @@ def tight_crop_image(img, verbose=False, resize_fix_h=False):
         print('(right x2, bottom y2):', (x2, y2))
         print('cropped_image size:', cropped_image_size)
         
-    if resize_fix_h:
+    if resize_fix:
         origin_h, origin_w = cropped_image.shape
-        resize_w = int(origin_w / origin_h * resize_fix_h)
-        resize_h = resize_fix_h
+        if origin_h > origin_w:
+            resize_w = int(origin_w / origin_h * resize_fix)
+            resize_h = resize_fix
+        else:
+            resize_h = int(origin_h / origin_w * resize_fix)
+            resize_w = resize_fix
         if verbose:
             print('resize_h:', resize_h)
             print('resize_w:', resize_w, \
@@ -173,10 +177,10 @@ def add_padding(img, image_size=128, verbose=False, pad_value=None):
     return img
 
 
-def centering_image(img, image_size=128, verbose=False, resize_fix_h=False, pad_value=None):
+def centering_image(img, image_size=128, verbose=False, resize_fix=False, pad_value=None):
     if not pad_value:
         pad_value = img[0][0]
-    cropped_image = tight_crop_image(img, verbose=verbose, resize_fix_h=resize_fix_h)
+    cropped_image = tight_crop_image(img, verbose=verbose, resize_fix=resize_fix)
     centered_image = add_padding(cropped_image, image_size=image_size, verbose=verbose, pad_value=pad_value)
     
     return centered_image
