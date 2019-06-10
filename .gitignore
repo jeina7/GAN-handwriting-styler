@@ -7,7 +7,6 @@
 *.jpeg
 __pycache__/
 *.png
-handwritings/
 png_logs/
 *.obj
 model_checkpoint_fail_2/
