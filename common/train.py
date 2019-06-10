@@ -40,7 +40,7 @@ class Trainer:
     def train(self, max_epoch, schedule, save_path, to_model_path, lr=0.001, \
               log_step=100, sample_step=350, fine_tune=False, flip_labels=False, \
               restore=None, from_model_path=False, with_charid=False, \
-              freeze_encoder=False, save_nrow=None, model_save_step=None):
+              freeze_encoder=False, save_nrow=8, model_save_step=None):
 
         # Fine Tuning coefficient
         if not fine_tune:
@@ -212,8 +212,6 @@ class Trainer:
                 if (i+1) % sample_step == 0:
                     fixed_fake_images = Generator(self.fixed_source, En, De, \
                                                   self.embeddings, self.fixed_label, GPU=self.GPU)[0]
-                    if not save_nrow:
-                        save_nrow = 8
                     save_image(denorm_image(fixed_fake_images.data), \
                                os.path.join(save_path, 'fake_samples-%d-%d.png' % \
                                             (int(prev_epoch)+epoch+1, i+1)), \
@@ -259,7 +257,7 @@ class Trainer:
 
 
 def interpolation(data_provider, grids, fixed_char_ids, interpolated_font_ids, embeddings, \
-                  En, De, batch_size, img_size=128, save_path=False, GPU=True):
+                  En, De, batch_size, img_size=128, save_nrow=6, save_path=False, GPU=True):
     
     train_batch_iter = data_provider.get_train_iter(batch_size, with_charid=True)
     
@@ -340,6 +338,6 @@ def interpolation(data_provider, grids, fixed_char_ids, interpolated_font_ids, e
                 # save
                 save_image(denorm_image(image.data), \
                            os.path.join(save_path, file_path), \
-                           nrow=6, pad_value=255)
+                           nrow=save_nrow, pad_value=255)
     
     return grid_results

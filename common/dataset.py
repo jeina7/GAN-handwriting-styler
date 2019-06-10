@@ -6,7 +6,8 @@ import numpy as np
 import random
 import os
 import torch
-from .utils import pad_seq, bytes_to_file, read_split_image, shift_and_resize_image, normalize_image
+from .utils import pad_seq, bytes_to_file, read_split_image
+from .utils import shift_and_resize_image, normalize_image, centering_image
 
 
 def get_batch_iter(examples, batch_size, augment, with_charid=False):
@@ -113,6 +114,7 @@ class TrainDataProvider(object):
             else:
                 print("train examples -> %d" % (len(self.train.examples)))
 
+                
     def get_train_iter(self, batch_size, shuffle=True, with_charid=False):
         training_examples = self.train.examples[:]
         if shuffle:
@@ -123,27 +125,71 @@ class TrainDataProvider(object):
         else:
             return get_batch_iter(training_examples, batch_size, augment=True)
 
-    def get_val_iter(self, batch_size, shuffle=True):
+        
+    def get_val_iter(self, batch_size, shuffle=True, with_charid=False):
         """
         Validation iterator runs forever
         """
         val_examples = self.val.examples[:]
         if shuffle:
             np.random.shuffle(val_examples)
-        while True:
-            val_batch_iter = get_batch_iter(val_examples, batch_size, augment=False)
-            for labels, examples in val_batch_iter:
-                yield labels, examples
+        if with_charid:
+            return get_batch_iter(val_examples, batch_size, augment=True, with_charid=True)
+        else:
+            return get_batch_iter(val_examples, batch_size, augment=True)
 
+        
     def compute_total_batch_num(self, batch_size):
         """Total padded batch num"""
         return int(np.ceil(len(self.train.examples) / float(batch_size)))
 
+    
     def get_all_labels(self):
         """Get all training labels"""
         return list({e[0] for e in self.train.examples})
 
+    
     def get_train_val_path(self):
         return self.train_path, self.val_path
     
     
+def save_fixed_sample(sample_size, img_size, data_dir, save_dir, \
+                      val=False, verbose=True, with_charid=True):
+    data_provider = TrainDataProvider(data_dir, verbose=verbose, val=val)
+    if not val:
+        train_batch_iter = data_provider.get_train_iter(sample_size, with_charid=with_charid)
+    else:
+        train_batch_iter = data_provider.get_val_iter(sample_size, with_charid=with_charid)
+        
+    for batch in train_batch_iter:
+        if with_charid:
+            font_ids, _, batch_images = batch
+        else:
+            font_ids, batch_images = batch
+        fixed_batch = batch_images.cuda()
+        fixed_source = fixed_batch[:, 1, :, :].reshape(sample_size, 1, img_size, img_size)
+        fixed_target = fixed_batch[:, 0, :, :].reshape(sample_size, 1, img_size, img_size)
+
+        # centering
+        for idx, (image_S, image_T) in enumerate(zip(fixed_source, fixed_target)):
+            image_S = image_S.cpu().detach().numpy().reshape(img_size, img_size)
+            image_S = centering_image(image_S, resize_fix=90)
+            fixed_source[idx] = torch.tensor(image_S).view([1, img_size, img_size])
+            image_T = image_T.cpu().detach().numpy().reshape(img_size, img_size)
+            image_T = centering_image(image_T)
+            fixed_target[idx] = torch.tensor(image_T).view([1, img_size, img_size])
+
+        fixed_label = np.array(font_ids)
+        source_with_label = [(label, image_S.cpu().detach().numpy()) \
+                             for label, image_S in zip(fixed_label, fixed_source)]
+        source_with_label = sorted(source_with_label, key=lambda i: i[0])
+        target_with_label = [(label, image_T.cpu().detach().numpy()) \
+                             for label, image_T in zip(fixed_label, fixed_target)]
+        target_with_label = sorted(target_with_label, key=lambda i: i[0])
+        fixed_source = torch.tensor(np.array([i[1] for i in source_with_label])).cuda()
+        fixed_target = torch.tensor(np.array([i[1] for i in target_with_label])).cuda()
+        fixed_label = sorted(fixed_label)
+        torch.save(fixed_source, os.path.join(save_dir, 'fixed_source.pkl'))
+        torch.save(fixed_target, os.path.join(save_dir, 'fixed_target.pkl'))
+        torch.save(fixed_label, os.path.join(save_dir, 'fixed_label.pkl'))
+        return
