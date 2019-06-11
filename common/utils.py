@@ -104,8 +104,8 @@ def show_comparison(font_num, real_targets, fake_targets, show_num=8):
 def tight_crop_image(img, verbose=False, resize_fix=False):
     img_size = img.shape[0]
     full_white = img_size
-    col_sum = np.where(full_white - np.sum(img, axis=0) > 1)
-    row_sum = np.where(full_white - np.sum(img, axis=1) > 1)
+    col_sum = np.where(full_white - np.sum(img, axis=0) > 0)
+    row_sum = np.where(full_white - np.sum(img, axis=1) > 0)
     y1, y2 = row_sum[0][0], row_sum[0][-1]
     x1, x2 = col_sum[0][0], col_sum[0][-1]
     cropped_image = img[y1:y2, x1:x2]
@@ -116,13 +116,13 @@ def tight_crop_image(img, verbose=False, resize_fix=False):
         print('(right x2, bottom y2):', (x2, y2))
         print('cropped_image size:', cropped_image_size)
         
-    if resize_fix:
+    if type(resize_fix) == int:
         origin_h, origin_w = cropped_image.shape
         if origin_h > origin_w:
-            resize_w = int(origin_w / origin_h * resize_fix)
+            resize_w = int(origin_w * (resize_fix / origin_h))
             resize_h = resize_fix
         else:
-            resize_h = int(origin_h / origin_w * resize_fix)
+            resize_h = int(origin_h * (resize_fix / origin_w))
             resize_w = resize_fix
         if verbose:
             print('resize_h:', resize_h)
@@ -133,7 +133,26 @@ def tight_crop_image(img, verbose=False, resize_fix=False):
         cropped_image = imresize(cropped_image, (resize_h, resize_w))
         cropped_image = normalize_image(cropped_image)
         cropped_image_size = cropped_image.shape
+        if verbose:
+            print('resized_image size:', cropped_image_size)
         
+    elif type(resize_fix) == float:
+        origin_h, origin_w = cropped_image.shape
+        resize_h, resize_w = int(origin_h * resize_fix), int(origin_w * resize_fix)
+        if resize_h > 120:
+            resize_h = 120
+            resize_w = int(resize_w * 120 / resize_h)
+        if resize_w > 120:
+            resize_w = 120
+            resize_h = int(resize_h * 120 / resize_w)
+        if verbose:
+            print('resize_h:', resize_h)
+            print('resize_w:', resize_w)
+        
+        # resize
+        cropped_image = imresize(cropped_image, (resize_h, resize_w))
+        cropped_image = normalize_image(cropped_image)
+        cropped_image_size = cropped_image.shape
         if verbose:
             print('resized_image size:', cropped_image_size)
     
@@ -196,3 +215,12 @@ def chars_to_ids(sentence):
         fixed_char_ids.append(charset.index(char))
         
     return fixed_char_ids
+
+
+def round_function(i):
+    if i < -0.95:
+        return -1
+    elif i > 0.95:
+        return 1
+    else:
+        return i

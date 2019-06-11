@@ -6,7 +6,7 @@ import numpy as np
 import random
 import os
 import torch
-from .utils import pad_seq, bytes_to_file, read_split_image
+from .utils import pad_seq, bytes_to_file, read_split_image, round_function
 from .utils import shift_and_resize_image, normalize_image, centering_image
 
 
@@ -154,7 +154,7 @@ class TrainDataProvider(object):
     
     
 def save_fixed_sample(sample_size, img_size, data_dir, save_dir, \
-                      val=False, verbose=True, with_charid=True):
+                      val=False, verbose=True, with_charid=True, resize_fix=90):
     data_provider = TrainDataProvider(data_dir, verbose=verbose, val=val)
     if not val:
         train_batch_iter = data_provider.get_train_iter(sample_size, with_charid=with_charid)
@@ -173,10 +173,12 @@ def save_fixed_sample(sample_size, img_size, data_dir, save_dir, \
         # centering
         for idx, (image_S, image_T) in enumerate(zip(fixed_source, fixed_target)):
             image_S = image_S.cpu().detach().numpy().reshape(img_size, img_size)
+            image_S = np.array(list(map(round_function, image_S.flatten()))).reshape(128, 128)
             image_S = centering_image(image_S, resize_fix=90)
             fixed_source[idx] = torch.tensor(image_S).view([1, img_size, img_size])
             image_T = image_T.cpu().detach().numpy().reshape(img_size, img_size)
-            image_T = centering_image(image_T)
+            image_T = np.array(list(map(round_function, image_T.flatten()))).reshape(128, 128)
+            image_T = centering_image(image_T, resize_fix=resize_fix)
             fixed_target[idx] = torch.tensor(image_T).view([1, img_size, img_size])
 
         fixed_label = np.array(font_ids)

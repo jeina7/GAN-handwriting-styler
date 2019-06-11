@@ -14,10 +14,9 @@ from common.utils import denorm_image, centering_image
 
 class Trainer:
     
-    def __init__(self, GPU, data_dir, model_dir, fixed_dir, fixed_id, fonts_num, batch_size, img_size):
+    def __init__(self, GPU, data_dir, fixed_dir, fonts_num, batch_size, img_size):
         self.GPU = GPU
         self.data_dir = data_dir
-        self.model_dir = model_dir
         self.fixed_dir = fixed_dir
         self.fonts_num = fonts_num
         self.batch_size = batch_size
@@ -27,10 +26,9 @@ class Trainer:
         self.embedding_num = self.embeddings.shape[0]
         self.embedding_dim = self.embeddings.shape[3]
         
-        self.fixed_id = fixed_id
-        self.fixed_source = torch.load(os.path.join(fixed_dir, 'fixed_source_%d.pkl' % fixed_id))
-        self.fixed_target = torch.load(os.path.join(fixed_dir, 'fixed_target_%d.pkl' % fixed_id))
-        self.fixed_label = torch.load(os.path.join(fixed_dir, 'fixed_label_%d.pkl' % fixed_id))
+        self.fixed_source = torch.load(os.path.join(fixed_dir, 'fixed_source.pkl'))
+        self.fixed_target = torch.load(os.path.join(fixed_dir, 'fixed_target.pkl'))
+        self.fixed_label = torch.load(os.path.join(fixed_dir, 'fixed_label.pkl'))
         
         self.data_provider = TrainDataProvider(self.data_dir)
         self.total_batches = self.data_provider.compute_total_batch_num(self.batch_size)
@@ -40,7 +38,7 @@ class Trainer:
     def train(self, max_epoch, schedule, save_path, to_model_path, lr=0.001, \
               log_step=100, sample_step=350, fine_tune=False, flip_labels=False, \
               restore=None, from_model_path=False, with_charid=False, \
-              freeze_encoder=False, save_nrow=8, model_save_step=None):
+              freeze_encoder=False, save_nrow=8, model_save_step=None, resize_fix=90):
 
         # Fine Tuning coefficient
         if not fine_tune:
@@ -84,6 +82,10 @@ class Trainer:
 
         # optimizer
         if freeze_encoder:
+#             freeze_layers = ['deconv1', 'deconv2']
+#             for name, param in De.named_parameters():
+#                 if name.split('.')[0] in freeze_layers:
+#                     param.requires_grad = False
             G_parameters = list(De.parameters())
         else:
             G_parameters = list(En.parameters()) + list(De.parameters())
@@ -128,10 +130,10 @@ class Trainer:
                 # centering
                 for idx, (image_S, image_T) in enumerate(zip(real_source, real_target)):
                     image_S = image_S.cpu().detach().numpy().reshape(self.img_size, self.img_size)
-                    image_S = centering_image(image_S, resize_fix_h=90)
+                    image_S = centering_image(image_S, resize_fix=90)
                     real_source[idx] = torch.tensor(image_S).view([1, self.img_size, self.img_size])
                     image_T = image_T.cpu().detach().numpy().reshape(self.img_size, self.img_size)
-                    image_T = centering_image(image_T)
+                    image_T = centering_image(image_T, resize_fix=resize_fix)
                     real_target[idx] = torch.tensor(image_T).view([1, self.img_size, self.img_size])
 
                 # generate fake image form source image
@@ -282,10 +284,13 @@ def interpolation(data_provider, grids, fixed_char_ids, interpolated_font_ids, e
             real_targets = batch_images[:, 0, :, :].view([batch_size, 1, img_size, img_size])
 
             # real_sources 를 전부 centering / image size fitting 해준다
-            for idx, image in enumerate(real_sources):
-                image = image.cpu().detach().numpy().reshape(img_size, img_size)
-                image = centering_image(image, resize_fix_h=100)
-                real_sources[idx] = torch.tensor(image).view([1, img_size, img_size])
+            for idx, (image_S, image_T) in enumerate(zip(real_sources, real_targets)):
+                image_S = image_S.cpu().detach().numpy().reshape(img_size, img_size)
+                image_S = centering_image(image_S, resize_fix=100)
+                real_sources[idx] = torch.tensor(image_S).view([1, img_size, img_size])
+                image_T = image_T.cpu().detach().numpy().reshape(img_size, img_size)
+                image_T = centering_image(image_T, resize_fix=100)
+                real_targets[idx] = torch.tensor(image_T).view([1, img_size, img_size])
                 
             # 18개의 encoded_source 생성
             # encoded_source, encode_layer는 interpolate할 필요 없다
