@@ -104,8 +104,8 @@ def show_comparison(font_num, real_targets, fake_targets, show_num=8):
 def tight_crop_image(img, verbose=False, resize_fix=False):
     img_size = img.shape[0]
     full_white = img_size
-    col_sum = np.where(full_white - np.sum(img, axis=0) > 0)
-    row_sum = np.where(full_white - np.sum(img, axis=1) > 0)
+    col_sum = np.where(full_white - np.sum(img, axis=0) > 1)
+    row_sum = np.where(full_white - np.sum(img, axis=1) > 1)
     y1, y2 = row_sum[0][0], row_sum[0][-1]
     x1, x2 = col_sum[0][0], col_sum[0][-1]
     cropped_image = img[y1:y2, x1:x2]
