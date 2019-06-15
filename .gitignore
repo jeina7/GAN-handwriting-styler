@@ -8,6 +8,7 @@
 *.jpeg
 __pycache__/
 *.png
+handwritings/jeina
 png_logs/
 *.obj
 model_checkpoint_fail_2/
