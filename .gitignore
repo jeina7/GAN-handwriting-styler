@@ -5,6 +5,7 @@
 *.DS_Store
 *.gz
 *.pptx
+*.jpg
 *.jpeg
 __pycache__/
 *.png
