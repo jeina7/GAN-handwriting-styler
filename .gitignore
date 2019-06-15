@@ -1,3 +1,4 @@
+*.ipynb
 *.pkl
 *.env
 *.ipynb_checkpoints
