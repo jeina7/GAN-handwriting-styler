@@ -82,10 +82,6 @@ class Trainer:
 
         # optimizer
         if freeze_encoder:
-#             freeze_layers = ['deconv1', 'deconv2']
-#             for name, param in De.named_parameters():
-#                 if name.split('.')[0] in freeze_layers:
-#                     param.requires_grad = False
             G_parameters = list(De.parameters())
         else:
             G_parameters = list(En.parameters()) + list(De.parameters())
