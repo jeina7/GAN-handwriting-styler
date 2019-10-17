@@ -4,4 +4,5 @@
 *.jpg
 *.jpeg
 *.obj
+*.ipynb
 __pycache__/
