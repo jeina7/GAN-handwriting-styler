@@ -1,11 +1,63 @@
 # My Handwriting Styler: 내 손글씨를 따라쓰는 인공지능
 
 
-<div style="text-align: center;"><img src="pngs/results_rigid_fonts.png" width="500" style="margin: auto;">
-왼쪽 : 모델이 생성한 가짜 이미지 / 오른쪽 : 실제 폰트 이미지</div>
+<div style="text-align: center;"><img src="pngs/results_rigid_fonts.png" width="500"></div>
+<div style="text-align: center;">왼쪽 : 모델이 생성한 가짜 이미지 / 오른쪽 : 실제 폰트 이미지</div>
 
 ## \# 프로젝트 소개
-GAN 기반으로 된 모델을 활용해 사람의 손글씨를 학습하고 그 글씨체를 반영한 글자 이미지를 생성합니다. 사람의 손글씨를 학습하기 전에, 먼저 대량의 컴퓨터 폰트 글자 이미지로 사전 학습을 진행하고, 그 후 적은 양의 사람 손글씨 데이터로 Transfer Learning(전이학습)을 진행합니다. 사전학습의 과정은 [kaonashi-tyc](https://github.com/kaonashi-tyc)가 중국어로 진행한  [zi2zi](https://github.com/kaonashi-tyc/zi2zi) 프로젝트의 도움을 받았습니다.  
+GAN 기반으로 된 모델을 활용해 사람의 손글씨를 학습하고 그 글씨체를 반영한 글자 이미지를 생성하는 프로젝트입니다. 사람의 손글씨를 학습하기 전에, 먼저 약 75,000장 정도의 대량의 컴퓨터 폰트 글자 이미지로 사전 학습을 진행하고, 그 후 약 200장의 적은 양의 사람 손글씨 데이터로 Transfer Learning(전이학습)을 진행합니다. 사전학습의 과정은 [kaonashi-tyc](https://github.com/kaonashi-tyc)가 중국어로 진행한  [zi2zi](https://github.com/kaonashi-tyc/zi2zi) 프로젝트의 도움을 받았습니다.  
 
 
 프로젝트의 전체 진행 과정, 이론, 실험 등은 [블로그 글](https://jeinalog.tistory.com/15)에서 더 자세히 읽으실 수 있습니다.
+
+
+## \# 모델의 구조
+<div style="text-align: center;"><img src="pngs/model.png" width="600"></div>
+
+모델의 기본 구조는 GAN으로, Generator와 Discriminator로 구성됩니다. 다만, Generator는 고딕체 이미지를 입력받아 스타일이 변환된 이미지를 출력하는 역할을 하기 때문에 Encoder와 Decoder로 이루어진다는 점이 Vanilla GAN과 다릅니다. 이미지를 생성한 후 Real Image와 비교해 손실함수를 계산하며 학습합니다.  
+Discriminator는 이미지를 입력받아 True인지 False인지에 대한 확률값을 출력하는 동시에, 글자의 폰트 카테고리를 분류합니다. 이 두가지 모두에 대해 손실함수를 계산해 학습합니다.
+
+생성되는 글자의 폰트 스타일은 Generator는 다음과 같이 Encoder가 이미지를 매핑시킨 후 Decoder에 들어가기 전 붙여지는 Category Vector로 결정됩니다. 또한 Generator는 Encoder에서 압축되어가는 Tensor들을 Decoder에 Concatenate 해주는 Unet 구조로 구성되어 있습니다.
+
+<div style="text-align: center;"><img src="pngs/Unet.png" width="600"></div>
+
+
+## \# Pre-Training
+<div style="text-align: center;"><img src="gifz/old_training.gif" width="500"></div>
+<div style="text-align: center;">[Pre-Training 과정] 데이터 : 75,000장 / 150 epoch</div>
+
+> 사전학습의 과정은 [kaonashi-tyc](https://github.com/kaonashi-tyc)가 중국어로 진행한  [zi2zi](https://github.com/kaonashi-tyc/zi2zi) 프로젝트의 도움을 받았습니다.  
+
+모델은 먼저 약 150epoch를 밑바닥부터 학습합니다.
+- 1~30epoch : `L1_penalty=100`, `Lconst_penalty=15`
+- 31~150epochh : `L1_penalty=500`, `Lconst_penalty=1000`
+
+
+학습 초기단계인 1~30epoch에서는 모델이 전체적인 글자의 형상을 빠르게 잡을 수 있도록 L1 loss에 대해 더 큰 가중치를 두고 학습합니다. 그 후 31~150epoch 에서는 constant loss에 더 큰 가중치를 둡니다. 이 Loss는 [DTN](https://arxiv.org/abs/1611.02200) 논문에서 소개된 손실함수로, 세부적인 부분에 대해 보다 효과적으로 학습됩니다.
+
+
+## \# Transfer Learning: 손글씨 학습
+<div style="text-align: center;"><img src="gifz/jeina_training_imporv_1.gif" width="500"></div>
+<div style="text-align: center;">[Transfer Learning 과정] 데이터 : 210장 / 550 epoch</div>
+
+150epoch의 사전학습이 끝난 모델로 손글씨를 학습합니다. 위 이미지는 151~550epoch 까지 학습한 결과입니다. epoch 수가 많지만, 데이터가 210장으로 적어서 학습시간이 훨씬 짧습니다.
+
+
+## \# Interpolation
+<div style="text-align: center;"><img src="gifz/font_to_font_interpolation_short.gif" width="500"></div>
+
+Interpolation은 [DCGAN](https://arxiv.org/abs/1511.06434) 논문에서 소개된, 모델이 학습한 잠재공간을 탐색하는 실험입니다. 이 실험은 '모델이 여러가지 폰트 카테고리의 벡터공간을 제대로 학습했다면, 폰트와 폰트 간의 중간 벡터들에 대해서도 의미있는 결과를 낼 것이다'라는 가설에서 시작됩니다. 위 결과는 한 폰트에서 다른 폰트로 이동할 때 중간폰트들을 거치며 부드럽게 변환되는 것을 보여줍니다. 이는 모델이 폰트 카테고리 벡터 공간을 제대로 학습했다는 증거가 됩니다.
+
+
+## \# Codes
+```
+common
+├── dataset.py    # load dataset, data pre-processing
+├── function.py   # deep learning functions : conv2d, relu etc.
+├── models.py     # Generator(Encoder, Decoder), Discriminator
+├── train.py      # model Trainer
+└── utils.py      # util functions
+
+get_data
+├── font2img.py   # font.ttf -> image
+└── package.py    # .png -> .pkl
