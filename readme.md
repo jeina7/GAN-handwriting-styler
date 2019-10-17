@@ -1,3 +1,5 @@
+[English version]()
+
 # My Handwriting Styler, 내 손글씨를 따라쓰는 인공지능
 
 
@@ -51,7 +53,7 @@ GAN 기반으로 된 모델을 활용해 사람의 손글씨를 학습하고 그
 
 
 <p align="center"><img src="pngs/Unet_3d.png" width="600"></p>
-생성되는 글자의 폰트 스타일은 Generator는 위와 같이 Encoder가 이미지를 매핑시킨 후 Decoder에 들어가기 전 붙여지는 Category Vector로 결정됩니다. 또한 Generator는 Encoder에서 압축되어가는 Tensor들을 Decoder에 Concatenate 해주는 Unet 구조로 구성되어 있습니다.
+생성되는 글자의 폰트 스타일은 Generator는 위와 같이 Encoder가 이미지를 매핑시킨 후 Decoder에 들어가기 전 붙여지는 Category Vector로 결정됩니다. 또한 Generator는 Encoder에서 압축되어가는 Tensor들을 Decoder에 Concatenate 해주는 [Unet](https://arxiv.org/abs/1505.04597) 구조로 구성되어 있습니다.
 
 
 
