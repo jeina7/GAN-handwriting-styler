@@ -264,22 +264,16 @@ def interpolation(data_provider, grids, fixed_char_ids, interpolated_font_ids, e
         grid_results = {from_to: {charid: None for charid in fixed_char_ids} \
                         for from_to in interpolated_font_ids}
 
-        # total_batch=24, 24번 도는 for문
         for i, batch in enumerate(train_batch_iter):
-
-            # batch_size=18, batch에는 18개의 data 포함
             font_ids_from, char_ids, batch_images = batch
             font_filter = [i[0] for i in interpolated_font_ids]
             font_filter_plus = font_filter + [font_filter[0]]
             font_ids_to = [font_filter_plus[font_filter.index(i)+1] for i in font_ids_from]
             batch_images = batch_images.cuda()
 
-            # 18개의 source/target_from/target_to images 추출
-            # source는 같아서 from/to가 나뉘지 않는다
             real_sources = batch_images[:, 1, :, :].view([batch_size, 1, img_size, img_size])
             real_targets = batch_images[:, 0, :, :].view([batch_size, 1, img_size, img_size])
 
-            # real_sources 를 전부 centering / image size fitting 해준다
             for idx, (image_S, image_T) in enumerate(zip(real_sources, real_targets)):
                 image_S = image_S.cpu().detach().numpy().reshape(img_size, img_size)
                 image_S = centering_image(image_S, resize_fix=100)
@@ -288,11 +282,8 @@ def interpolation(data_provider, grids, fixed_char_ids, interpolated_font_ids, e
                 image_T = centering_image(image_T, resize_fix=100)
                 real_targets[idx] = torch.tensor(image_T).view([1, img_size, img_size])
                 
-            # 18개의 encoded_source 생성
-            # encoded_source, encode_layer는 interpolate할 필요 없다
             encoded_source, encode_layers = En(real_sources)
 
-            # embedding interpolation 생성
             interpolated_embeddings = []
             embedding_dim = embeddings.shape[3]
             for from_, to_ in zip(font_ids_from, font_ids_to):
@@ -305,7 +296,6 @@ def interpolation(data_provider, grids, fixed_char_ids, interpolated_font_ids, e
             interpolated_embedded = torch.cat((encoded_source, interpolated_embeddings), 1)
             fake_targets = De(interpolated_embedded, encode_layers)
 
-            # grid_results에 결과 저장
             # [(0)real_S, (1)real_T, (2)fake_T]
             for fontid, charid, real_S, real_T, fake_T in zip(font_ids_from, char_ids, \
                                                               real_sources, real_targets, \
