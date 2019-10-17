@@ -1,6 +1,9 @@
 # My Handwriting Styler, 내 손글씨를 따라쓰는 인공지능
 
 
+
+
+
 <p align="center"><img src="pngs/results_rigid_fonts.png" width="500"></p>
 <p align="center">왼쪽 : 모델이 생성한 가짜 이미지 / 오른쪽 : 실제 폰트 이미지</p>
 
@@ -10,7 +13,6 @@
 　    
 
 
-　     
 
 
 ## \# 프로젝트 소개
@@ -23,7 +25,6 @@ GAN 기반으로 된 모델을 활용해 사람의 손글씨를 학습하고 그
 
 
 
-　    
 
 
 　     
@@ -32,12 +33,13 @@ GAN 기반으로 된 모델을 활용해 사람의 손글씨를 학습하고 그
 ## \# 모델의 구조
 <p align="center"><img src="pngs/model.png" width="600"></p>
 
-모델의 기본 구조는 GAN으로, Generator와 Discriminator로 구성됩니다. 다만, Generator는 고딕체 이미지를 입력받아 스타일이 변환된 이미지를 출력하는 역할을 하기 때문에 Encoder와 Decoder로 이루어진다는 점이 Vanilla GAN과 다릅니다. 이미지를 생성한 후 Real Image와 비교해 손실함수를 계산하며 학습합니다.  
-Discriminator는 이미지를 입력받아 True인지 False인지에 대한 확률값을 출력하는 동시에, 글자의 폰트 카테고리를 분류합니다. 이 두가지 모두에 대해 손실함수를 계산해 학습합니다.
+모델의 기본 구조는 GAN으로, Generator와 Discriminator로 구성됩니다.
+- Generator는 고딕체 이미지를 입력받아 스타일이 변환된 이미지를 출력하는 역할을 하기 때문에 Encoder와 Decoder로 이루어진다는 점이 Vanilla GAN과 다릅니다. 이미지를 생성한 후 Real Image와 비교해 손실함수를 계산하며 학습합니다.  
+- Discriminator는 이미지를 입력받아 True인지 False인지에 대한 확률값을 출력하는 동시에, 글자의 폰트 카테고리를 분류합니다. 이 두가지 모두에 대해 손실함수를 계산해 학습합니다.
 
 생성되는 글자의 폰트 스타일은 Generator는 다음과 같이 Encoder가 이미지를 매핑시킨 후 Decoder에 들어가기 전 붙여지는 Category Vector로 결정됩니다. 또한 Generator는 Encoder에서 압축되어가는 Tensor들을 Decoder에 Concatenate 해주는 Unet 구조로 구성되어 있습니다.
 
-<div style="text-align: center;"><img src="pngs/Unet.png" width="600"></div>
+<p align="center"><img src="pngs/Unet.png" width="600"></p>
 
 
 
@@ -46,7 +48,6 @@ Discriminator는 이미지를 입력받아 True인지 False인지에 대한 확�
 　    
 
 
-　     
 
 
 ## \# Pre-Training
@@ -74,7 +75,6 @@ Discriminator는 이미지를 입력받아 True인지 False인지에 대한 확�
 
 
 
-　    
 
 
 
@@ -94,7 +94,6 @@ Discriminator는 이미지를 입력받아 True인지 False인지에 대한 확�
 　    
 
 
-　    
 
 
 
@@ -107,7 +106,6 @@ Interpolation은 [DCGAN](https://arxiv.org/abs/1511.06434) 논문에서 소개�
 
 
 
-　    
 
 
 
