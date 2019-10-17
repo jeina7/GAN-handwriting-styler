@@ -1,4 +1,4 @@
-[한글 버전]()
+[한글 버전](https://github.com/jeina7/Handwriting_styler/blob/master/readme.md)
 
 # My Handwriting Styler, with GAN & Unet
 
