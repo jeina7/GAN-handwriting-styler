@@ -1,4 +1,4 @@
-[한글 버전](https://github.com/jeina7/Handwriting_styler/blob/master/readme.md)
+[한글 버전](https://github.com/jeina7/Handwriting_styler#my-handwriting-styler-%EB%82%B4-%EC%86%90%EA%B8%80%EC%94%A8%EB%A5%BC-%EB%94%B0%EB%9D%BC%EC%93%B0%EB%8A%94-%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5)
 
 # My Handwriting Styler, with GAN & Unet
 
@@ -20,7 +20,7 @@
 
 
 ## \# Introduction
-This is a project that trains GAN-based model with the handwriting of human, and generates the character images that reflect those styles. Before learning human handwriting, it should be pre-trained on a large amount of about 75,000 digital font character images, and then transfer learning is done by small amounts of human handwritten data.
+This is a project that trains GAN-based model with the human handwriting, and generates the character images that reflect their styles. Before learning human handwriting, it should be pre-trained on a large amount of digital font character images, and then transfer learning is done by small amounts of human handwritten data.
 
 
 All details about this project can be seen in the [blog post](https://jeinalog.tistory.com/15). (in Korean)
@@ -38,8 +38,8 @@ All details about this project can be seen in the [blog post](https://jeinalog.t
 <p align="center"><img src="pngs/model.png" width="600"></p>
 
 The basic model architecture is GAN, which consist of Generator and Discriminator.
-- Generator gets Gothic type image for input, and do the style transfer with it. It has Encoder and Decoder, which is the different point with Vanilla GAN. Generator improves its result by evaluating its generated image by Discriminator.
-- Discrinimator gets Real or Fake images, and calculate the probability of them to be the real image. It predicts the category of the font type as well.
+- Generator gets Gothic type image for input, and do the style transfer with it. It has Encoder and Decoder inside, which is the different point with Vanilla GAN. Generator improves the quality of generated image during evaluated by Discriminator.
+- Discrinimator gets Real or Fake images, and calculate the probability of them to be the real image. At the same time, it also predicts the category of the font type.
 
 
 
@@ -54,7 +54,7 @@ The basic model architecture is GAN, which consist of Generator and Discriminato
 
 <p align="center"><img src="pngs/Unet_3d.png" width="600"></p>
 
-It is 3D image of Encoder and Decoder. After the Encoder extracts features of image, the font category vector is concatenated at the end of the feature vector. Also, the middle-step vectors extracted by Encoder goes to the pair vectors which is decoded by Decoder. This architecture is [Unet](https://arxiv.org/abs/1505.04597).
+It is 3D image of Encoder and Decoder. After the Encoder extracts features of image, the font category vector is concatenated at the end of the feature vector. Also, the middle-step extracted vectors goes to the pair-vectors which is decoded by Decoder. This architecture is [Unet](https://arxiv.org/abs/1505.04597).
 
 
 
@@ -88,13 +88,13 @@ It is 3D image of Encoder and Decoder. After the Encoder extracts features of im
 
 
 
-Model trains 150epoch from the scratch.
+At first, the model trains 150epoch from the scratch.
 
 - 1~30epoch : `L1_penalty=100`, `Lconst_penalty=15`
 - 31~150epochh : `L1_penalty=500`, `Lconst_penalty=1000`
 
 
-Until 30epoch, where is early stage yet, we give more weight to L1 loss to let the model learn overall shape first. After that, constant loss will be more weighted to make model learn more details to be sharp. Constant loss is introduced in [DTN](https://arxiv.org/abs/1611.02200).
+Until 30epoch, where is early stage yet, we give more weight to L1 loss to let the model learn overall shape first. After that, constant loss will be more weighted to make model learn more details and make them sharper. Constant loss has introduced in [DTN](https://arxiv.org/abs/1611.02200).
 
 
 
@@ -159,7 +159,7 @@ Until 30epoch, where is early stage yet, we give more weight to L1 loss to let t
 
 
 The upper image is Ground Truth written by human, and the lower image is generated fake image.   
-All 13 Korean characters written in image are not contained in 210-image training data set. It represents that model can generate unseen characters even if it has trained with only part of all Korean character set.
+All 13 Korean characters written in image are not contained in training data set. It represents that model can generate unseen characters even if it has trained with only part of all Korean character set.
 
 
 
@@ -181,7 +181,7 @@ All 13 Korean characters written in image are not contained in 210-image trainin
 
 
 
-Interpolation is the experiment to explore the latent space which model learned. It has introduced in [DCGAN](https://arxiv.org/abs/1511.06434). The GIF shows that there are middle-font between one type of font and another. It is the evidence that model trained the category vector space properly, not just 'memorizing' characters.
+Interpolation is the experiment to explore the latent space which model learned. It has introduced in [DCGAN](https://arxiv.org/abs/1511.06434). The GIF shows that there are middle-font between one type of the font and another. It is the evidence that model has trained the category vector space properly, not just 'memorizing' characters.
 
 
 
