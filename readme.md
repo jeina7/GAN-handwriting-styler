@@ -1,4 +1,4 @@
-[한글 버전](https://github.com/jeina7/Handwriting_styler#my-handwriting-styler-%EB%82%B4-%EC%86%90%EA%B8%80%EC%94%A8%EB%A5%BC-%EB%94%B0%EB%9D%BC%EC%93%B0%EB%8A%94-%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5)
+[한글 버전](https://github.com/jeina7/Handwriting_styler/blob/master/readme_korean.md#my-handwriting-styler-%EB%82%B4-%EC%86%90%EA%B8%80%EC%94%A8%EB%A5%BC-%EB%94%B0%EB%9D%BC%EC%93%B0%EB%8A%94-%EC%9D%B8%EA%B3%B5%EC%A7%80%EB%8A%A5)
 
 # My Handwriting Styler, with GAN & U-Net
 

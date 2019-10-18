@@ -1,4 +1,4 @@
-[English version](https://github.com/jeina7/Handwriting_styler/blob/master/readme_english.md)
+[English version](https://github.com/jeina7/Handwriting_styler#my-handwriting-styler-with-gan--u-net)
 
 # My Handwriting Styler, 내 손글씨를 따라쓰는 인공지능
 
