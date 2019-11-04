@@ -20,7 +20,7 @@
 
 
 ## \# Introduction
-This is a project that trains GAN-based model with the human handwriting, and generates the character images that reflect their styles. Before learning human handwriting, it should be pre-trained on a large amount of digital font character images, and then do the transfer learning with small amounts of human handwritten images.
+This is a project that trains GAN-based model with the human handwriting, and generates the character images that reflect their styles. Before learning human handwriting, it should be pre-trained on a large amount of digital font character images, and then it does transfer learning with small amounts of human handwritten character images.
 
 
 All details about this project can be seen in the [blog post](https://jeinalog.tistory.com/15). (in Korean)
@@ -37,7 +37,7 @@ All details about this project can be seen in the [blog post](https://jeinalog.t
 ## \# Model Architecture
 <p align="center"><img src="pngs/model.png" width="600"></p>
 
-The basic model architecture is GAN, which consist of Generator and Discriminator.
+The basic model architecture is GAN, which consists of Generator and Discriminator.
 - **Generator** gets Gothic type image for input, and do the style transfer with it. It has Encoder and Decoder inside, which is the different point from Vanilla GAN. Generator improves the quality of generated image during evaluated by Discriminator.
 - **Discrinimator** gets Real or Fake images, and calculate the probability of them to be the real image. At the same time, it also predicts the category of the font type.
 
@@ -54,7 +54,17 @@ The basic model architecture is GAN, which consist of Generator and Discriminato
 
 <p align="center"><img src="pngs/Unet_3d.png" width="600"></p>
 
-It is 3D image of Encoder and Decoder. After the Encoder extracts features of image, the font category vector is concatenated at the end of the feature vector. Also, the middle-step extracted vectors goes to the pair-vectors which is decoded by Decoder. This architecture is [U-Net](https://arxiv.org/abs/1505.04597).
+
+
+
+
+
+
+
+　     
+
+
+It is 3D image of Encoder and Decoder. After the Encoder extracts features of image, the font category vector is concatenated at the end of the feature vector. Also, the middle-step extracted vectors goes to the pair-vectors which are decoded by Decoder. This architecture is [U-Net](https://arxiv.org/abs/1505.04597).
 
 
 
@@ -159,7 +169,7 @@ Until 30epoch, where is early stage yet, we give more weight to L1 loss to let t
 
 
 The upper image is Ground Truth written by human, and the lower image is generated fake image.   
-All 13 Korean characters written in image are not contained in training data set. It represents that model can generate unseen characters even if it has trained with only part of all Korean character set.
+All 13 Korean characters written in image are not contained in the training data set. It represents that model can generate unseen characters even if it has been trained with only part of all Korean character set.
 
 
 
@@ -181,7 +191,7 @@ All 13 Korean characters written in image are not contained in training data set
 
 
 
-Interpolation is the experiment to explore the latent space which model learned, which has introduced in [DCGAN](https://arxiv.org/abs/1511.06434). The GIF shows that there are middle-font between one type of the font and another. It is the evidence that model has trained the category vector space properly, not just 'memorizing' characters.
+Interpolation is the experiment to explore the latent space which model learned, which has been introduced in [DCGAN](https://arxiv.org/abs/1511.06434). The GIF shows that there are middle-font between one type of the font and another. It is the evidence that model has trained the category vector space properly, not just 'memorizing' characters.
 
 
 
